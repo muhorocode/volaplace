@@ -1,0 +1,37 @@
+cd ~/volaplace/backend
+cat > app/__init__.py << 'EOF'
+from flask import Flask
+from flask_sqlalchemy import SQLAlchemy
+from flask_cors import CORS
+from flask_migrate import Migrate
+
+db = SQLAlchemy()
+migrate = Migrate()
+
+def create_app():
+    app = Flask(__name__)
+    
+    # Basic configuration
+    app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///volaplace.db'
+    app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+    app.config['SECRET_KEY'] = 'dev-key-for-today'
+    
+    CORS(app)
+    db.init_app(app)
+    migrate.init_app(app, db)
+    
+    # Import and register blueprints - CORRECT IMPORTS
+    from app.routes.auth import bp as auth_bp
+    from app.routes.users import bp as users_bp
+    from app.routes.organizations import bp as orgs_bp
+    from app.routes.shifts import bp as shifts_bp
+    from app.routes.api import bp as api_bp
+    
+    app.register_blueprint(auth_bp)
+    app.register_blueprint(users_bp)
+    app.register_blueprint(orgs_bp)
+    app.register_blueprint(shifts_bp)
+    app.register_blueprint(api_bp)
+    
+    return app
+EOF
