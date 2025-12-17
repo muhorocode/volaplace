@@ -4,7 +4,7 @@ function App() {
   const [apiStatus, setApiStatus] = useState('Checking...');
 
   useEffect(() => {
-    fetch(process.env.REACT_APP_API_URL || 'http://localhost:5000/api/health')
+    fetch(import.meta.env.VITE_API_URL || 'http://localhost:5000/api/health')
       .then(res => res.json())
       .then(data => setApiStatus(data.status))
       .catch(() => setApiStatus('disconnected'));
