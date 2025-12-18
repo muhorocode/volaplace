@@ -1,8 +1,8 @@
-"""Initial clean migration
+"""new serializaton rules
 
-Revision ID: e93b26395f15
+Revision ID: 99390cff6d2c
 Revises: 
-Create Date: 2025-12-18 01:19:22.093467
+Create Date: 2025-12-18 04:24:13.100414
 
 """
 from alembic import op
@@ -10,7 +10,7 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision = 'e93b26395f15'
+revision = '99390cff6d2c'
 down_revision = None
 branch_labels = None
 depends_on = None

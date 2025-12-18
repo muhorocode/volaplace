@@ -28,10 +28,9 @@ class User(db.Model, SerializerMixin):
 
     serialize_rules = (
         '-password_hash', 
-        '-organization.user', 
+        '-organization', 
         '-volunteer_shifts', 
-        '-transactions', 
-        '-rules_updated'
+        '-transactions'
     )
 
     def set_password(self, password):
@@ -105,7 +104,7 @@ class ShiftRoster(db.Model, SerializerMixin):
     # Connect roster to the payment log
     payment_record = db.relationship('TransactionLog', back_populates='shift_roster', uselist=False)
 
-    serialize_rules = ('-shift.roster', '-volunteer.volunteer_shifts', '-payment_record')
+    serialize_rules = ('-shift', '-volunteer')
 
 class GlobalRules(db.Model, SerializerMixin):
     __tablename__ = 'global_rules'
