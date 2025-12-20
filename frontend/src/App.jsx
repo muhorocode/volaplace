@@ -1,21 +1,28 @@
+import { Routes, Route, Navigate } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 
+import Login from './pages/Login';
+import Register from './pages/Register';
+
 function App() {
-  const [apiStatus, setApiStatus] = useState('Checking...');
+  const [apiStatus, setApiStatus] = useState('checking');
 
   useEffect(() => {
-    fetch(process.env.REACT_APP_API_URL || 'http://localhost:5000/api/health')
+    fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/health`)
       .then(res => res.json())
       .then(data => setApiStatus(data.status))
       .catch(() => setApiStatus('disconnected'));
   }, []);
 
+  // Optional: block app if backend is down
+  if (apiStatus === 'checking') return null;
+
   return (
-    <div style={{ padding: '40px', fontFamily: 'Arial, sans-serif' }}>
-      <h1>VolaPlace</h1>
-      <p>Geo-verified volunteer marketplace</p>
-      <p>Backend Status: <strong>{apiStatus}</strong></p>
-    </div>
+    <Routes>
+      <Route path="/" element={<Navigate to="/login" />} />
+      <Route path="/login" element={<Login />} />
+      <Route path="/register" element={<Register />} />
+    </Routes>
   );
 }
 

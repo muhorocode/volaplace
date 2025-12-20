@@ -1,0 +1,22 @@
+# --- Security (The most important part) ---
+.env
+**/.env
+**/.env.*
+
+# --- Python (Backend) ---
+backend/venv/
+backend/__pycache__/
+**/__pycache__/
+backend/*.pyc
+
+# --- Node (Frontend) ---
+node_modules/
+**/node_modules/
+frontend/dist/
+frontend/.vercel
+
+# --- OS Junk ---
+.DS_Store
+
+# --- Deployment ---
+.vercel
