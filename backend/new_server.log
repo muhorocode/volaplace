@@ -1,0 +1,29 @@
+✅ Auth blueprint registered
+✅ Users blueprint registered
+✅ Organizations blueprint registered
+✅ Shifts blueprint registered
+✅ Api blueprint registered
+✅ Database tables created
+✅ Database tables created
+
+🚀 STARTING VOLAPLACE BACKEND
+========================================
+🌐 Server: http://localhost:5000
+📡 Test endpoints:
+   GET  /           - Server status
+   GET  /health     - Health check
+   GET  /api/status - API status
+   GET  /api/test   - API test
+
+👤 Register user:
+   curl -X POST http://localhost:5000/api/auth/register \
+     -H "Content-Type: application/json" \
+     -d '{"email":"test@test.com","password":"test123","name":"Test","role":"volunteer"}'
+
+Press CTRL+C to stop
+========================================
+
+ * Serving Flask app 'app'
+ * Debug mode: on
+Address already in use
+Port 5000 is in use by another program. Either identify and stop that program, or start the server with a different port.
