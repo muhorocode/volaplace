@@ -91,6 +91,24 @@ class Shift(db.Model, SerializerMixin):
 
     serialize_rules = ('-project.organization', '-project.shifts', '-roster')
 
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "title": self.title,
+            "date": self.date.isoformat() if self.date else None,
+            "start_time": self.start_time.strftime("%H:%M") if self.start_time else None,
+            "end_time": self.end_time.strftime("%H:%M") if self.end_time else None,
+            "max_volunteers": self.max_volunteers,
+            "status": self.status,
+            
+            "project": {
+                "name": self.project.name,
+                "latitude": self.project.latitude,
+                "longitude": self.project.longitude,
+                "geofence_radius": self.project.geofence_radius
+            } if self.project else None
+        }
+
 # shift roaster table.
 class ShiftRoster(db.Model, SerializerMixin):
     __tablename__ = 'shifts_roster'
