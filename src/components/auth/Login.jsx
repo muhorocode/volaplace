@@ -1,23 +1,23 @@
-import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { useAuth } from '../../context/AuthContext'; // import Auth context
+import { useState } from "react";
+import { Link } from "react-router-dom";
+import { useAuth } from "../../context/AuthContext";
 
 export default function Login() {
   const { login } = useAuth();
-  const navigate = useNavigate(); // redirect after login
 
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [role, setRole] = useState("Volunteer"); // ROLE SELECTOR
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
   const [showPassword, setShowPassword] = useState(false);
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    setError('');
+    setError("");
 
     if (!email || !password) {
-      setError('Please fill in all fields');
+      setError("Please fill in all fields");
       return;
     }
 
@@ -25,14 +25,8 @@ export default function Login() {
 
     setTimeout(() => {
       setLoading(false);
-
-      // Mock login: choose role based on email for demo
-      const role = email.includes('org') ? 'Organization' : 'Volunteer';
-      login(email, password, role);
-
-      // Redirect based on role
-      navigate(role === 'Volunteer' ? '/volunteer' : '/admin');
-    }, 1500);
+      login({ email, role }); // ✅ AuthContext decides state
+    }, 1200);
   };
 
   return (
@@ -51,43 +45,53 @@ export default function Login() {
           <input
             type="email"
             placeholder="Email"
-            className="w-full px-4 py-3 rounded-lg bg-white/20 placeholder-gray-200 focus:outline-none focus:ring-2 focus:ring-white"
+            className="w-full px-4 py-3 rounded-lg bg-white/20 placeholder-gray-200 focus:ring-2 focus:ring-white"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
           />
 
           <div className="relative">
             <input
-              type={showPassword ? 'text' : 'password'}
+              type={showPassword ? "text" : "password"}
               placeholder="Password"
-              className="w-full px-4 py-3 rounded-lg bg-white/20 placeholder-gray-200 focus:outline-none focus:ring-2 focus:ring-white pr-12"
+              className="w-full px-4 py-3 rounded-lg bg-white/20 placeholder-gray-200 focus:ring-2 focus:ring-white pr-12"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
             />
             <button
               type="button"
               onClick={() => setShowPassword(!showPassword)}
-              className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-200 text-sm"
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-sm"
             >
-              {showPassword ? 'Hide' : 'Show'}
+              {showPassword ? "Hide" : "Show"}
             </button>
           </div>
+
+          {/* ROLE SELECTOR */}
+          <select
+            value={role}
+            onChange={(e) => setRole(e.target.value)}
+            className="w-full p-3 rounded-lg bg-white/20 focus:ring-2 focus:ring-white"
+          >
+            <option value="Volunteer">I am a Volunteer</option>
+            <option value="Organization">I am an Organization</option>
+          </select>
 
           <button
             type="submit"
             disabled={loading}
             className={`w-full py-3 rounded-lg font-semibold transition ${
               loading
-                ? 'bg-white/50 cursor-not-allowed'
-                : 'bg-white text-purple-700 hover:scale-105'
+                ? "bg-white/50 cursor-not-allowed"
+                : "bg-white text-purple-700 hover:scale-105"
             }`}
           >
-            {loading ? 'Signing in...' : 'Sign In'}
+            {loading ? "Signing in..." : "Sign In"}
           </button>
         </form>
 
         <p className="text-center mt-6 text-sm">
-          Don’t have an account?{' '}
+          Don’t have an account?{" "}
           <Link to="/register" className="underline font-semibold">
             Register
           </Link>

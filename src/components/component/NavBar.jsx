@@ -12,7 +12,7 @@ const Navbar = () => {
         {/* Heading */}
         <div className="flex">
           <h1 className="text-white text-2xl font-semibold pl-10 mr-auto">
-            <Link to="/">Nikunj Singh</Link>
+            <Link to="/">Nassur mohammed</Link>
           </h1>
           <div className="text-white pl-2.5 pt-1.5">
             <UserPen />

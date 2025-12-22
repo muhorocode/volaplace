@@ -6,19 +6,34 @@ import Register from "./components/auth/Register";
 
 import VolunteerDashboard from "./pages/VolunteerDashboard";
 import AdminDashboard from "./pages/AdminDashboard";
+import AuditTable from "./components/Admin/AuditTable"; // ✅ fixed path
+
 import Home from "./pages/Home";
 import About from "./pages/About";
 
 import Sidebar from "./components/component/Sidebar";
 import Navbar from "./components/component/Navbar";
 
-
 import "./App.css";
+
+/* -------- Protected Route Wrapper -------- */
+function ProtectedRoute({ children, allowedRole }) {
+  const { user } = useAuth();
+
+  if (!user) return <Navigate to="/login" />;
+
+  if (allowedRole && user.role !== allowedRole) {
+    // Redirect unauthorized users
+    return <Navigate to="/" />;
+  }
+
+  return children;
+}
 
 export default function App() {
   const { user } = useAuth();
 
-  /* Not logged in → Auth pages only */
+  // -------- NOT LOGGED IN --------
   if (!user) {
     return (
       <Routes>
@@ -29,36 +44,60 @@ export default function App() {
     );
   }
 
-  /* Logged in → Dashboard layout */
+  // -------- LOGGED IN LAYOUT --------
   return (
-    <div style={{ backgroundColor: "#212121" }} className="flex h-screen">
+    <div className="flex h-screen bg-[#5d2c80ff]">
       <Sidebar />
 
       <div className="flex flex-col w-full">
         <Navbar />
 
         <Routes>
-          {/* Volunteer */}
-          {user.role === "Volunteer" && (
-            <>
-              <Route path="/volunteer" element={<VolunteerDashboard />} />
-              <Route path="/" element={<Navigate to="/volunteer" />} />
-            </>
-          )}
+          {/* -------- VOLUNTEER ROUTES -------- */}
+          <Route
+            path="/volunteer"
+            element={
+              <ProtectedRoute allowedRole="Volunteer">
+                <VolunteerDashboard />
+              </ProtectedRoute>
+            }
+          />
 
-          {/* Organization / Admin */}
-          {user.role === "Organization" && (
-            <>
-              <Route path="/admin" element={<AdminDashboard />} />
-              <Route path="/" element={<Navigate to="/admin" />} />
-            </>
-          )}
+          {/* -------- ADMIN / ORGANIZATION ROUTES -------- */}
+          <Route
+            path="/admin"
+            element={
+              <ProtectedRoute allowedRole="Organization">
+                <AdminDashboard />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/audit"
+            element={
+              <ProtectedRoute allowedRole="Organization">
+                <AuditTable />
+              </ProtectedRoute>
+            }
+          />
 
-          {/* Shared routes */}
+          {/* -------- SHARED ROUTES -------- */}
           <Route path="/home" element={<Home />} />
           <Route path="/about" element={<About />} />
 
-          {/* Fallback */}
+          {/* -------- DEFAULT REDIRECT -------- */}
+          <Route
+            path="/"
+            element={
+              user.role === "Volunteer" ? (
+                <Navigate to="/volunteer" />
+              ) : (
+                <Navigate to="/admin" />
+              )
+            }
+          />
+
+          {/* -------- FALLBACK -------- */}
           <Route path="*" element={<Navigate to="/" />} />
         </Routes>
       </div>
