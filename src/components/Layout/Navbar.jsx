@@ -13,11 +13,9 @@ export default function Navbar() {
 
   return (
     <nav className="bg-white shadow-md p-4 flex justify-between items-center">
-      {/* Left: App name and dashboard links */}
       <div className="flex items-center space-x-4">
         <span className="font-bold text-xl text-gray-700">VolaPlace</span>
 
-        {/* Dashboard links based on role */}
         {user?.role === "Volunteer" && (
           <Link
             to="/volunteer"
@@ -36,7 +34,6 @@ export default function Navbar() {
         )}
       </div>
 
-      {/* Right: Role display and logout button */}
       <div className="flex items-center space-x-4">
         {user && (
           <>

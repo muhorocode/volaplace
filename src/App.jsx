@@ -6,40 +6,62 @@ import Register from "./components/auth/Register";
 
 import VolunteerDashboard from "./pages/VolunteerDashboard";
 import AdminDashboard from "./pages/AdminDashboard";
+import Home from "./pages/Home";
+import About from "./pages/About";
+
+import Sidebar from "./components/component/Sidebar";
+import Navbar from "./components/component/Navbar";
+
+
+import "./App.css";
 
 export default function App() {
   const { user } = useAuth();
 
+  /* Not logged in → Auth pages only */
+  if (!user) {
+    return (
+      <Routes>
+        <Route path="/login" element={<Login />} />
+        <Route path="/register" element={<Register />} />
+        <Route path="*" element={<Navigate to="/login" />} />
+      </Routes>
+    );
+  }
+
+  /* Logged in → Dashboard layout */
   return (
-    <Routes>
-      {/* Routes for users who are not logged in */}
-      {!user && (
-        <>
-          <Route path="/login" element={<Login />} />
-          <Route path="/register" element={<Register />} />
-          <Route path="/" element={<Navigate to="/login" />} />
-          <Route path="*" element={<Navigate to="/login" />} />
-        </>
-      )}
+    <div style={{ backgroundColor: "#212121" }} className="flex h-screen">
+      <Sidebar />
 
-      {/* Routes for logged-in Volunteers */}
-      {user?.role === "Volunteer" && (
-        <>
-          <Route path="/volunteer" element={<VolunteerDashboard />} />
-          <Route path="/" element={<Navigate to="/volunteer" />} />
-          <Route path="*" element={<Navigate to="/volunteer" />} />
-        </>
-      )}
+      <div className="flex flex-col w-full">
+        <Navbar />
 
-      {/* Routes for logged-in Organization/Admin */}
-      {user?.role === "Organization" && (
-        <>
-          <Route path="/admin" element={<AdminDashboard />} />
-          <Route path="/" element={<Navigate to="/admin" />} />
-          <Route path="*" element={<Navigate to="/admin" />} />
-        </>
-      )}
-    </Routes>
+        <Routes>
+          {/* Volunteer */}
+          {user.role === "Volunteer" && (
+            <>
+              <Route path="/volunteer" element={<VolunteerDashboard />} />
+              <Route path="/" element={<Navigate to="/volunteer" />} />
+            </>
+          )}
+
+          {/* Organization / Admin */}
+          {user.role === "Organization" && (
+            <>
+              <Route path="/admin" element={<AdminDashboard />} />
+              <Route path="/" element={<Navigate to="/admin" />} />
+            </>
+          )}
+
+          {/* Shared routes */}
+          <Route path="/home" element={<Home />} />
+          <Route path="/about" element={<About />} />
+
+          {/* Fallback */}
+          <Route path="*" element={<Navigate to="/" />} />
+        </Routes>
+      </div>
+    </div>
   );
 }
-
