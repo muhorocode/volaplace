@@ -123,10 +123,6 @@ function Sidebar() {
                 !open && "scale-0"
               }`}
             >
-              <div className="pt-0.5 pr-2">
-              <LogOut />
-              </div>{" "}
-              Log out
             </div>
           </div>
         </div>

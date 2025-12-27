@@ -22,13 +22,7 @@ const Navbar = () => {
         {/* Navigation Links */}
         <div className="ml-auto">
           <div className="flex text-white hover:text-gray-300 cursor-pointer">
-            <div>
-              <Link to="/about" className="nav-link">
-                Settings{" "}
-              </Link>
-            </div>
             <div className="pl-2  pt-1">
-              <Settings size={18} />
             </div>
           </div>
         </div>
