@@ -1,9 +1,10 @@
+import React from "react";
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import ShiftList from "../components/ShiftList"
 import useShiftStore from "../store/ShiftStore";
 
-function Home() {
+export default function Home() {
 	const [apiStatus, setApiStatus] = useState('checking');
 	const searchShifts = useShiftStore((state) => state.searchShifts);
 
@@ -22,4 +23,3 @@ function Home() {
 	);
 }
 
-export default Home;
