@@ -16,5 +16,6 @@ def calculate_distance(lat1, lon1, lat2, lon2):
     
     c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
     distance = R * c
+    # distance_in_meters = distance * 1000
     
     return round(distance, 2) # Returns distance in km

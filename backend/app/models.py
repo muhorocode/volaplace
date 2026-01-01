@@ -8,6 +8,7 @@ class User(db.Model, SerializerMixin):
     __tablename__ = 'users'
 
     id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(50), nullable=True)
     email = db.Column(db.String(120), unique=True, nullable=False)
     password_hash = db.Column(db.String(256), nullable=False)
     role = db.Column(db.String(20), nullable=False) # e.g., 'admin', 'org_admin', 'volunteer'
@@ -37,6 +38,19 @@ class User(db.Model, SerializerMixin):
 
     def check_password(self, password):
         return check_password_hash(self.password_hash, password)
+    
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "name": self.name,
+            "email": self.email,
+            "password": self.password_hash,
+            "role": self.role,
+            "phone": self.phone,
+            "mpesa_phone": self.mpesa_phone,
+            "profile_complete": self.profile_completed,
+            "created_at": self.created_at
+        }
     
 # orgnization table.
 class Organization(db.Model, SerializerMixin):
@@ -102,8 +116,8 @@ class Shift(db.Model, SerializerMixin):
             
             "project": {
                 "name": self.project.name,
-                "latitude": self.project.latitude,
-                "longitude": self.project.longitude,
+                "lat": self.project.lat,
+                "lon": self.project.lon,
                 "geofence_radius": self.project.geofence_radius
             } if self.project else None
         }
@@ -128,7 +142,7 @@ class ShiftRoster(db.Model, SerializerMixin):
 
     serialize_rules = ('-shift', '-volunteer')
 
- # rules table.
+# rules table
 class GlobalRules(db.Model, SerializerMixin):
     __tablename__ = 'global_rules'
 
