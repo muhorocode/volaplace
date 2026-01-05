@@ -1,4 +1,3 @@
-from sqlalchemy.orm import validates
 from sqlalchemy_serializer import SerializerMixin
 from datetime import datetime
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -9,6 +8,7 @@ class User(db.Model, SerializerMixin):
     __tablename__ = 'users'
 
     id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(50), nullable=True)
     email = db.Column(db.String(120), unique=True, nullable=False)
     password_hash = db.Column(db.String(256), nullable=False)
     role = db.Column(db.String(20), nullable=False) # e.g., 'admin', 'org_admin', 'volunteer'
@@ -38,6 +38,19 @@ class User(db.Model, SerializerMixin):
 
     def check_password(self, password):
         return check_password_hash(self.password_hash, password)
+    
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "name": self.name,
+            "email": self.email,
+            "password": self.password_hash,
+            "role": self.role,
+            "phone": self.phone,
+            "mpesa_phone": self.mpesa_phone,
+            "profile_complete": self.profile_completed,
+            "created_at": self.created_at
+        }
     
 # orgnization table.
 class Organization(db.Model, SerializerMixin):
@@ -91,6 +104,24 @@ class Shift(db.Model, SerializerMixin):
 
     serialize_rules = ('-project.organization', '-project.shifts', '-roster')
 
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "title": self.title,
+            "date": self.date.isoformat() if self.date else None,
+            "start_time": self.start_time.strftime("%H:%M") if self.start_time else None,
+            "end_time": self.end_time.strftime("%H:%M") if self.end_time else None,
+            "max_volunteers": self.max_volunteers,
+            "status": self.status,
+            
+            "project": {
+                "name": self.project.name,
+                "lat": self.project.lat,
+                "lon": self.project.lon,
+                "geofence_radius": self.project.geofence_radius
+            } if self.project else None
+        }
+
 # shift roaster table.
 class ShiftRoster(db.Model, SerializerMixin):
     __tablename__ = 'shifts_roster'
@@ -111,7 +142,7 @@ class ShiftRoster(db.Model, SerializerMixin):
 
     serialize_rules = ('-shift', '-volunteer')
 
- # rules table.
+# rules table
 class GlobalRules(db.Model, SerializerMixin):
     __tablename__ = 'global_rules'
 

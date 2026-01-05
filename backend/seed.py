@@ -27,11 +27,11 @@ def seed_database():
         # Create Users
         print("👥 Creating users...")
         u = {}
-        u['admin'] = User(email='admin@volaplace.com', role='admin', phone='254700000001', profile_completed=True)
-        u['rc_user'] = User(email='redcross@volaplace.com', role='org_admin', phone='254700000002', profile_completed=True)
-        u['fb_user'] = User(email='foodbank@volaplace.com', role='org_admin', phone='254700000003', profile_completed=True)
-        u['john'] = User(email='john.doe@volaplace.com', role='volunteer', phone='254711000001', profile_completed=True)
-        u['mary'] = User(email='mary.smith@volaplace.com', role='volunteer', phone='254711000002', profile_completed=True)
+        u['admin'] = User(name = 'Administrator', email='admin@volaplace.com', role='admin', phone='254700000001', profile_completed=True)
+        u['rc_user'] = User(name='Red Cross',email='redcross@volaplace.com', role='org_admin', phone='254700000002', profile_completed=True)
+        u['fb_user'] = User(name= 'Nairobi Food Bank',email='foodbank@volaplace.com', role='org_admin', phone='254700000003', profile_completed=True)
+        u['john'] = User(name = 'John Doe',email='john.doe@volaplace.com', role='volunteer', phone='254711000001', profile_completed=True)
+        u['mary'] = User(name = 'Mary Smith', email='mary.smith@volaplace.com', role='volunteer', phone='254711000002', profile_completed=True)
 
         for user in u.values():
             user.set_password('Admin123!')
@@ -72,7 +72,7 @@ def seed_database():
         db.session.add(t1)
 
         db.session.commit()
-        print("🚀 Database seeded successfully with relationships!")
+        print("🚀 Database seeded successfully!")
 
 if __name__ == "__main__":
     seed_database()

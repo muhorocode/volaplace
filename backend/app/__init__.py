@@ -12,7 +12,7 @@ def create_app():
     # CORS Setup
     allowed_origins = [
         "https://volaplace-api.onrender.com",
-        "http://localhost:5174",
+        "http://localhost:5173",
     ]
     CORS(app, origins=allowed_origins)
 
