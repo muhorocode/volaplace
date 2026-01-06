@@ -41,3 +41,6 @@ Thumbs.db
 
 # --- Deployment ---
 .vercel
+
+# --- Presentation & Guides ---
+PRESENTATION_GUIDE.md
