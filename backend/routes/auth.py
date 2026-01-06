@@ -2,6 +2,7 @@
 Auth routes for VolaPlace.
 """
 from flask import Blueprint, request, jsonify
+from flask_jwt_extended import create_access_token
 from app.models import User
 from app.config import db
 
@@ -68,6 +69,53 @@ def register():
     except Exception as e:
         db.session.rollback()
         return jsonify({"error": f"Registration failed: {str(e)}"}), 500
+
+
+@bp.route('/login', methods=['POST'])
+def login():
+    """
+    Login user and return JWT token.
+    Expected JSON: {
+        "email": "user@example.com",
+        "password": "securepassword"
+    }
+    """
+    try:
+        data = request.get_json()
+        
+        # Validate required fields
+        if not data.get('email') or not data.get('password'):
+            return jsonify({"error": "Email and password are required"}), 400
+        
+        # Find user by email
+        user = User.query.filter_by(email=data['email']).first()
+        
+        if not user or not user.check_password(data['password']):
+            return jsonify({"error": "Invalid email or password"}), 401
+        
+        # Create JWT token
+        access_token = create_access_token(
+            identity=user.id,
+            additional_claims={
+                "email": user.email,
+                "role": user.role
+            }
+        )
+        
+        return jsonify({
+            "message": "Login successful",
+            "access_token": access_token,
+            "user": {
+                "id": user.id,
+                "email": user.email,
+                "name": user.name,
+                "role": user.role,
+                "phone": user.phone
+            }
+        }), 200
+        
+    except Exception as e:
+        return jsonify({"error": f"Login failed: {str(e)}"}), 500
 
 
 @bp.route('/test', methods=['GET'])
