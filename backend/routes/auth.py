@@ -1,5 +1,6 @@
 """
 Auth routes for VolaPlace.
+Handles user registration, login, and profile management.
 """
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import create_access_token, jwt_required, get_jwt_identity
@@ -29,19 +30,19 @@ def register():
             if not data.get(field):
                 return jsonify({"error": f"Missing required field: {field}"}), 400
         
-        # Validate role
+        # Ensure role is valid (volunteer, org_admin, or admin)
         valid_roles = ['volunteer', 'org_admin', 'admin']
         if data['role'] not in valid_roles:
             return jsonify({"error": f"Invalid role. Must be one of: {', '.join(valid_roles)}"}), 400
         
-        # Check if user already exists
+        # Prevent duplicate registrations
         if User.query.filter_by(email=data['email']).first():
             return jsonify({"error": "Email already registered"}), 409
         
         if User.query.filter_by(phone=data['phone']).first():
             return jsonify({"error": "Phone number already registered"}), 409
         
-        # Create new user
+        # Create user with hashed password
         new_user = User(
             name=data.get('name'),
             email=data['email'],
@@ -87,13 +88,13 @@ def login():
         if not data.get('email') or not data.get('password'):
             return jsonify({"error": "Email and password are required"}), 400
         
-        # Find user by email
+        # Verify user exists and password matches
         user = User.query.filter_by(email=data['email']).first()
         
         if not user or not user.check_password(data['password']):
             return jsonify({"error": "Invalid email or password"}), 401
         
-        # Create JWT token
+        # Generate JWT token with user info
         access_token = create_access_token(
             identity=user.id,
             additional_claims={

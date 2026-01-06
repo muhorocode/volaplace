@@ -1,5 +1,6 @@
 """
 JWT authentication middleware for VolaPlace.
+Provides decorators for protecting routes and checking user roles.
 """
 from functools import wraps
 from flask import jsonify
