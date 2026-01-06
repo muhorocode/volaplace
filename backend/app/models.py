@@ -168,3 +168,4 @@ class TransactionLog(db.Model, SerializerMixin):
     shift_roster = db.relationship('ShiftRoster', back_populates='payment_record')
 
     serialize_rules = ('-volunteer', '-shift_roster')
+

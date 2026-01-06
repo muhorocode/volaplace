@@ -20,7 +20,7 @@ def create_app():
     uri = os.environ.get('DATABASE_URL')
 
     # handle both render and local postgres connections.
-    if uri.startswith("postgres://"):
+    if uri and uri.startswith("postgres://"):
         uri = uri.replace("postgres://", "postgresql://", 1)
 
     app.config['SQLALCHEMY_DATABASE_URI'] = uri
@@ -56,3 +56,4 @@ def create_app():
         seed_database()
 
     return app
+

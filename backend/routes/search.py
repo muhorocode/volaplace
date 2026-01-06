@@ -42,7 +42,3 @@ def get_shifts():
     
     return jsonify(shifts_list), 200
 
-
-
-
-

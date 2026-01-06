@@ -8,6 +8,22 @@ backend/venv/
 backend/__pycache__/
 **/__pycache__/
 backend/*.pyc
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+env/
+venv*/
+backend_backup/venv/
+*.egg-info/
+dist/
+build/
+
+# --- Logs ---
+*.log
+server.log
+*.sqlite
 
 # --- Node (Frontend) ---
 node_modules/
@@ -15,8 +31,13 @@ node_modules/
 frontend/dist/
 frontend/.vercel
 
+# --- IDE ---
+.vscode/
+.idea/
+
 # --- OS Junk ---
 .DS_Store
+Thumbs.db
 
 # --- Deployment ---
 .vercel
