@@ -118,12 +118,7 @@ function Sidebar() {
               </div>{" "}
               Revenue
             </div>
-            <div
-              className={`mt-auto flex pl-5 text-white origin-left font-small text-lg duration-200 cursor-pointer pt-3 ${
-                !open && "scale-0"
-              }`}
-            >
-            </div>
+
           </div>
         </div>
       </div>
