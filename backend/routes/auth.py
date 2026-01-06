@@ -2,7 +2,7 @@
 Auth routes for VolaPlace.
 """
 from flask import Blueprint, request, jsonify
-from flask_jwt_extended import create_access_token
+from flask_jwt_extended import create_access_token, jwt_required, get_jwt_identity
 from app.models import User
 from app.config import db
 
@@ -116,6 +116,37 @@ def login():
         
     except Exception as e:
         return jsonify({"error": f"Login failed: {str(e)}"}), 500
+
+
+@bp.route('/me', methods=['GET'])
+@jwt_required()
+def get_current_user():
+    """
+    Get current logged-in user information.
+    Requires: Authorization: Bearer <token>
+    """
+    try:
+        user_id = get_jwt_identity()
+        user = User.query.get(user_id)
+        
+        if not user:
+            return jsonify({"error": "User not found"}), 404
+        
+        return jsonify({
+            "user": {
+                "id": user.id,
+                "email": user.email,
+                "name": user.name,
+                "role": user.role,
+                "phone": user.phone,
+                "mpesa_phone": user.mpesa_phone,
+                "profile_completed": user.profile_completed,
+                "created_at": user.created_at.isoformat() if user.created_at else None
+            }
+        }), 200
+        
+    except Exception as e:
+        return jsonify({"error": f"Failed to get user: {str(e)}"}), 500
 
 
 @bp.route('/test', methods=['GET'])
