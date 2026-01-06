@@ -7,7 +7,7 @@ if __name__ == '__main__':
     print("📡 Endpoints:")
     print("  http://localhost:5000/")
     print("  http://localhost:5000/api/health")
-    print("  http://localhost:5000/api/auth/test")
-    print("  ... and all /api/*/test endpoints")
+    print("  http://localhost:5000/api/shifts")
     print("")
-    app.run(debug=True, host='0.0.0.0', port=5000)
+    app.run(debug=True, port=5000)
+

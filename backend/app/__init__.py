@@ -1,75 +1,59 @@
-from flask import Flask
-from flask_sqlalchemy import SQLAlchemy
+import os
+from flask import Flask, jsonify
 from flask_cors import CORS
-from flask_migrate import Migrate
-from datetime import datetime
+from dotenv import load_dotenv
+from .config import db, migrate
 
-db = SQLAlchemy()
-migrate = Migrate()
+load_dotenv()
 
 def create_app():
     app = Flask(__name__)
     
-    # Basic config
-    app.config['SECRET_KEY'] = 'dev-key'
-    app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///volaplace.db'
+    # CORS Setup
+    allowed_origins = [
+        "https://volaplace-api.onrender.com",
+        "http://localhost:5173",
+    ]
+    CORS(app, origins=allowed_origins)
+
+    # from .env for local.
+    uri = os.environ.get('DATABASE_URL')
+
+    # handle both render and local postgres connections.
+    if uri and uri.startswith("postgres://"):
+        uri = uri.replace("postgres://", "postgresql://", 1)
+
+    app.config['SQLALCHEMY_DATABASE_URI'] = uri
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-    
-    # Initialize extensions
-    CORS(app)
+
+    # initialize extensions
     db.init_app(app)
     migrate.init_app(app, db)
-    
-    # Create database tables
+
+    # import models inside factory.
+    # this prevents circular imports and registers models with SQLAlchemy
     with app.app_context():
-        db.create_all()
+        from . import models
+
+    # simple routes.
+    @app.route('/', methods=['GET'])
+    def index():
+        return jsonify({"message": "VolaPlace API Running"})
     
-    # ===== ROUTES =====
-    
-    @app.route('/')
-    def home():
-        return {
-            'message': 'VolaPlace API v1.0',
-            'status': 'running',
-            'endpoints': {
-                'health': '/api/health',
-                'auth': '/api/auth/*',
-                'organizations': '/api/organizations/*',
-                'shifts': '/api/shifts/*',
-                'users': '/api/users/*',
-                'search': '/api/search/*',
-                'attendance': '/api/attendance/*',
-                'payments': '/api/payments/*'
-            }
-        }
-    
-    @app.route('/api/health')
-    def api_health():
-        return {'status': 'healthy', 'service': 'VolaPlace API'}
-    
-    # Register blueprints
-    blueprints = [
-        ('auth', '/api/auth'),
-        ('organizations', '/api/organizations'),
-        ('shifts', '/api/shifts'),
-        ('users', '/api/users'),
-        ('search', '/api/search'),
-        ('attendance', '/api/attendance'),
-        ('payments', '/api/payments')
-    ]
-    
-    for module_name, url_prefix in blueprints:
-        try:
-            module = __import__(f'routes.{module_name}', fromlist=['bp'])
-            bp = getattr(module, 'bp')
-            app.register_blueprint(bp, url_prefix=url_prefix)
-            print(f"✅ {module_name.capitalize()} blueprint registered")
-        except Exception as e:
-            print(f"⚠️  {module_name}: {e}")
-            # Create fallback
-            @app.route(f'{url_prefix}/test')
-            def fallback():
-                return {'message': f'{module_name} routes'}, 200
-    
-    print(f"🎯 Total blueprints: {len(app.blueprints)}")
+    # endpoint health check.
+    @app.route('/api/health', methods=['GET'])
+    def health():
+        return jsonify({"status": "healthy"})
+
+    # blueprint
+    from routes.search import api_bp
+    app.register_blueprint(api_bp)
+
+    # CLI seed command (flask seed)
+    @app.cli.command("seed")
+    def run_seed():
+        from seed import seed_database
+        seed_database()
+
     return app
+

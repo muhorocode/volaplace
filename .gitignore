@@ -1,5 +1,13 @@
-# Python
-__pycache__/
+# --- Security (The most important part) ---
+.env
+**/.env
+**/.env.*
+
+# --- Python (Backend) ---
+backend/venv/
+backend/__pycache__/
+**/__pycache__/
+backend/*.pyc
 *.py[cod]
 *$py.class
 *.so
@@ -7,25 +15,29 @@ __pycache__/
 venv/
 env/
 venv*/
-backend/venv/
 backend_backup/venv/
 *.egg-info/
 dist/
 build/
 
-# Logs
+# --- Logs ---
 *.log
 server.log
 *.sqlite
 
-# Environment variables
-.env
-.env.local
+# --- Node (Frontend) ---
+node_modules/
+**/node_modules/
+frontend/dist/
+frontend/.vercel
 
-# IDE
+# --- IDE ---
 .vscode/
 .idea/
 
-# OS
+# --- OS Junk ---
 .DS_Store
 Thumbs.db
+
+# --- Deployment ---
+.vercel
