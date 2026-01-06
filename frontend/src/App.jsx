@@ -3,6 +3,9 @@ import { useEffect, useState } from 'react';
 
 import Login from './pages/Login';
 import Register from './pages/Register';
+import Home from './pages/Home';
+import OrgDashboard from './pages/OrgDashboard';
+import MyShifts from './pages/MyShifts';
 
 function App() {
   const [apiStatus, setApiStatus] = useState('checking');
@@ -22,6 +25,9 @@ function App() {
       <Route path="/" element={<Navigate to="/login" />} />
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
+      <Route path="/org/dashboard" element={<OrgDashboard />} />
+      <Route path="/volunteer/shifts" element={<MyShifts />} />
+      <Route path="*" element={<Navigate to="/" />} />
     </Routes>
   );
 }
