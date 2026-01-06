@@ -1,27 +1,62 @@
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
+
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
 export default function Register() {
-  const [form, setForm] = useState({ name: '', email: '', password: '' });
+  const navigate = useNavigate();
+  const [form, setForm] = useState({ 
+    name: '', 
+    email: '', 
+    password: '', 
+    phone: '', 
+    role: 'volunteer' 
+  });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [showPassword, setShowPassword] = useState(false); // NEW
+  const [success, setSuccess] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
 
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value });
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
+    setSuccess('');
 
-    if (!form.name || !form.email || !form.password) {
+    if (!form.name || !form.email || !form.password || !form.phone) {
       setError('All fields are required');
       return;
     }
 
     setLoading(true);
-    setTimeout(() => setLoading(false), 1500);
+
+    try {
+      const response = await fetch(`${API_URL}/api/auth/register`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(form),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        setSuccess('Account created successfully! Redirecting to login...');
+        setTimeout(() => {
+          navigate('/login');
+        }, 2000);
+      } else {
+        setError(data.error || 'Registration failed');
+      }
+    } catch (err) {
+      setError('Unable to connect to server. Please try again.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -38,12 +73,19 @@ export default function Register() {
           </div>
         )}
 
+        {success && (
+          <div className="bg-green-500/20 text-green-200 text-sm p-3 rounded-lg mb-4">
+            {success}
+          </div>
+        )}
+
         <form onSubmit={handleSubmit} className="space-y-4">
           <input
             name="name"
             placeholder="Full Name"
             className="w-full px-4 py-3 rounded-lg bg-white/20 placeholder-gray-200 focus:outline-none focus:ring-2 focus:ring-white"
             onChange={handleChange}
+            value={form.name}
           />
 
           <input
@@ -52,7 +94,27 @@ export default function Register() {
             placeholder="Email"
             className="w-full px-4 py-3 rounded-lg bg-white/20 placeholder-gray-200 focus:outline-none focus:ring-2 focus:ring-white"
             onChange={handleChange}
+            value={form.email}
           />
+
+          <input
+            name="phone"
+            type="tel"
+            placeholder="Phone (254712345678)"
+            className="w-full px-4 py-3 rounded-lg bg-white/20 placeholder-gray-200 focus:outline-none focus:ring-2 focus:ring-white"
+            onChange={handleChange}
+            value={form.phone}
+          />
+
+          <select
+            name="role"
+            className="w-full px-4 py-3 rounded-lg bg-white/20 text-white focus:outline-none focus:ring-2 focus:ring-white"
+            onChange={handleChange}
+            value={form.role}
+          >
+            <option value="volunteer" className="text-gray-900">Volunteer</option>
+            <option value="org_admin" className="text-gray-900">Organization</option>
+          </select>
 
           <div className="relative">
             <input
