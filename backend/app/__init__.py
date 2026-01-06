@@ -54,9 +54,19 @@ def create_app():
     # Register API blueprints
     from routes.search import api_bp
     from routes.auth import bp as auth_bp
+    from routes.users import bp as users_bp
+    from routes.organizations import bp as orgs_bp
+    from routes.shifts import bp as shifts_bp
+    from routes.attendance import bp as attendance_bp
+    from routes.payments import bp as payments_bp
     
     app.register_blueprint(api_bp)
     app.register_blueprint(auth_bp, url_prefix='/api/auth')  # Auth routes under /api/auth
+    app.register_blueprint(users_bp, url_prefix='/api/users')
+    app.register_blueprint(orgs_bp, url_prefix='/api/organizations')
+    app.register_blueprint(shifts_bp, url_prefix='/api/shifts')
+    app.register_blueprint(attendance_bp, url_prefix='/api/attendance')
+    app.register_blueprint(payments_bp, url_prefix='/api/payments')
 
     # CLI seed command (flask seed)
     @app.cli.command("seed")
