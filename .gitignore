@@ -20,10 +20,12 @@ backend_backup/venv/
 dist/
 build/
 
-# --- Logs ---
+# --- Logs & Database ---
 *.log
 server.log
 *.sqlite
+*.db
+backend/instance/
 
 # --- Node (Frontend) ---
 node_modules/
