@@ -19,9 +19,16 @@ def create_app():
 
     # from .env for local.
     uri = os.environ.get('DATABASE_URL')
+    
+    # Validate DATABASE_URL is set
+    if not uri:
+        raise RuntimeError(
+            "DATABASE_URL environment variable is not set. "
+            "Please set it in your .env file (local) or Render environment variables (production)."
+        )
 
     # handle both render and local postgres connections.
-    if uri and uri.startswith("postgres://"):
+    if uri.startswith("postgres://"):
         uri = uri.replace("postgres://", "postgresql://", 1)
 
     app.config['SQLALCHEMY_DATABASE_URI'] = uri
