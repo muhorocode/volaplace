@@ -6,7 +6,6 @@ import os
 import requests
 import base64
 from datetime import datetime
-from flask import current_app
 
 class MPesa:
     """M-Pesa Daraja API Integration"""
@@ -35,13 +34,19 @@ class MPesa:
             }
             
             response = requests.get(self.auth_url, headers=headers)
+            
+            # Print detailed error for debugging
+            if response.status_code != 200:
+                print(f"M-Pesa Auth Response Status: {response.status_code}")
+                print(f"M-Pesa Auth Response: {response.text}")
+            
             response.raise_for_status()
             
             result = response.json()
             return result.get('access_token')
             
         except Exception as e:
-            current_app.logger.error(f"M-Pesa auth error: {str(e)}")
+            print(f"M-Pesa auth error: {str(e)}")
             return None
     
     def generate_password(self):
@@ -123,13 +128,13 @@ class MPesa:
                 }
                 
         except requests.exceptions.RequestException as e:
-            current_app.logger.error(f"M-Pesa request error: {str(e)}")
+            print(f"M-Pesa request error: {str(e)}")
             return {
                 'success': False,
                 'error': f'Network error: {str(e)}'
             }
         except Exception as e:
-            current_app.logger.error(f"M-Pesa error: {str(e)}")
+            print(f"M-Pesa error: {str(e)}")
             return {
                 'success': False,
                 'error': str(e)
@@ -170,7 +175,7 @@ class MPesa:
             return response.json()
             
         except Exception as e:
-            current_app.logger.error(f"M-Pesa query error: {str(e)}")
+            print(f"M-Pesa query error: {str(e)}")
             return {'success': False, 'error': str(e)}
 
 
