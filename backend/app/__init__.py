@@ -13,6 +13,7 @@ def create_app():
     # CORS Setup
     allowed_origins = [
         "https://volaplace-api.onrender.com",
+        "https://volaplace.vercel.app",
         "http://localhost:5173",
     ]
     CORS(app, origins=allowed_origins)
