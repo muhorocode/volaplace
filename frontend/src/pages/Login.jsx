@@ -1,14 +1,17 @@
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
+
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
 export default function Login() {
+  const navigate = useNavigate();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [showPassword, setShowPassword] = useState(false); // NEW
+  const [showPassword, setShowPassword] = useState(false);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
 
@@ -18,10 +21,37 @@ export default function Login() {
     }
 
     setLoading(true);
-    setTimeout(() => {
+
+    try {
+      const response = await fetch(`${API_URL}/api/auth/login`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email, password }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        // Save token and user info
+        localStorage.setItem('token', data.access_token);
+        localStorage.setItem('user', JSON.stringify(data.user));
+        
+        // Redirect based on role
+        if (data.user.role === 'org_admin') {
+          navigate('/org/dashboard');
+        } else {
+          navigate('/volunteer/shifts');
+        }
+      } else {
+        setError(data.error || 'Login failed');
+      }
+    } catch (err) {
+      setError('Unable to connect to server. Please try again.');
+    } finally {
       setLoading(false);
-      setError('Invalid credentials');
-    }, 1500);
+    }
   };
 
   return (

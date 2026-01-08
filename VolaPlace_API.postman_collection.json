@@ -1,0 +1,396 @@
+{
+  "info": {
+    "name": "VolaPlace API",
+    "description": "Authentication and API endpoints for VolaPlace",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:5000",
+      "type": "string"
+    },
+    {
+      "key": "access_token",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Authentication",
+      "item": [
+        {
+          "name": "Register User",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"volunteer1@example.com\",\n  \"password\": \"password123\",\n  \"phone\": \"254712345678\",\n  \"role\": \"volunteer\",\n  \"name\": \"Jane Volunteer\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/auth/register",
+              "host": ["{{base_url}}"],
+              "path": ["api", "auth", "register"]
+            }
+          }
+        },
+        {
+          "name": "Register Organization",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"redcross@example.com\",\n  \"password\": \"secure123\",\n  \"phone\": \"254700123456\",\n  \"role\": \"organization\",\n  \"name\": \"Red Cross Kenya\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/auth/register",
+              "host": ["{{base_url}}"],
+              "path": ["api", "auth", "register"]
+            }
+          }
+        },
+        {
+          "name": "Login",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"redcross@example.com\",\n  \"password\": \"secure123\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/auth/login",
+              "host": ["{{base_url}}"],
+              "path": ["api", "auth", "login"]
+            }
+          }
+        },
+        {
+          "name": "Check Auth Status",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/api/auth/check",
+              "host": ["{{base_url}}"],
+              "path": ["api", "auth", "check"]
+            }
+          }
+        },
+        {
+          "name": "Logout",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{base_url}}/api/auth/logout",
+              "host": ["{{base_url}}"],
+              "path": ["api", "auth", "logout"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Shifts",
+      "item": [
+        {
+          "name": "Create Shift",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Community Clean-up\",\n  \"description\": \"Help clean up Uhuru Park\",\n  \"address\": \"Uhuru Park, Nairobi\",\n  \"latitude\": -1.2809,\n  \"longitude\": 36.8172,\n  \"start_time\": \"2026-01-15T09:00:00\",\n  \"end_time\": \"2026-01-15T13:00:00\",\n  \"volunteers_needed\": 10\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/shifts",
+              "host": ["{{base_url}}"],
+              "path": ["api", "shifts"]
+            }
+          }
+        },
+        {
+          "name": "Get All Shifts",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/api/shifts",
+              "host": ["{{base_url}}"],
+              "path": ["api", "shifts"]
+            }
+          }
+        },
+        {
+          "name": "Get Shift by ID",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/api/shifts/1",
+              "host": ["{{base_url}}"],
+              "path": ["api", "shifts", "1"]
+            }
+          }
+        },
+        {
+          "name": "Update Shift",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Updated Community Clean-up\",\n  \"volunteers_needed\": 15\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/shifts/1",
+              "host": ["{{base_url}}"],
+              "path": ["api", "shifts", "1"]
+            }
+          }
+        },
+        {
+          "name": "Delete Shift",
+          "request": {
+            "method": "DELETE",
+            "url": {
+              "raw": "{{base_url}}/api/shifts/1",
+              "host": ["{{base_url}}"],
+              "path": ["api", "shifts", "1"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Organizations",
+      "item": [
+        {
+          "name": "Get All Organizations",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/api/organizations",
+              "host": ["{{base_url}}"],
+              "path": ["api", "organizations"]
+            }
+          }
+        },
+        {
+          "name": "Create Organization Profile",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"description\": \"Leading humanitarian organization in Kenya\",\n  \"address\": \"South C, Nairobi\",\n  \"website\": \"https://redcross.ke\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/organizations",
+              "host": ["{{base_url}}"],
+              "path": ["api", "organizations"]
+            }
+          }
+        },
+        {
+          "name": "Get Organization by ID",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/api/organizations/1",
+              "host": ["{{base_url}}"],
+              "path": ["api", "organizations", "1"]
+            }
+          }
+        },
+        {
+          "name": "Test Organizations Endpoint",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/api/organizations/test",
+              "host": ["{{base_url}}"],
+              "path": ["api", "organizations", "test"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Users",
+      "item": [
+        {
+          "name": "Get All Users",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/api/users",
+              "host": ["{{base_url}}"],
+              "path": ["api", "users"]
+            }
+          }
+        },
+        {
+          "name": "Get User Profile",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/api/users/profile",
+              "host": ["{{base_url}}"],
+              "path": ["api", "users", "profile"]
+            }
+          }
+        },
+        {
+          "name": "Update User Profile",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Updated Name\",\n  \"phone\": \"254799999999\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/users/profile",
+              "host": ["{{base_url}}"],
+              "path": ["api", "users", "profile"]
+            }
+          }
+        },
+        {
+          "name": "Get User by ID",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/api/users/1",
+              "host": ["{{base_url}}"],
+              "path": ["api", "users", "1"]
+            }
+          }
+        },
+        {
+          "name": "Test Users Endpoint",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/api/users/test",
+              "host": ["{{base_url}}"],
+              "path": ["api", "users", "test"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Test Endpoints",
+      "item": [
+        {
+          "name": "Test Payments",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/api/payments/test",
+              "host": ["{{base_url}}"],
+              "path": ["api", "payments", "test"]
+            }
+          }
+        },
+        {
+          "name": "Test Attendance",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/api/attendance/test",
+              "host": ["{{base_url}}"],
+              "path": ["api", "attendance", "test"]
+            }
+          }
+        },
+        {
+          "name": "Test Shifts",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/api/shifts/test",
+              "host": ["{{base_url}}"],
+              "path": ["api", "shifts", "test"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Health Checks",
+      "item": [
+        {
+          "name": "Root",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/",
+              "host": ["{{base_url}}"],
+              "path": [""]
+            }
+          }
+        },
+        {
+          "name": "Health Check",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/api/health",
+              "host": ["{{base_url}}"],
+              "path": ["api", "health"]
+            }
+          }
+        },
+        {
+          "name": "API Status",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/api/status",
+              "host": ["{{base_url}}"],
+              "path": ["api", "status"]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}
