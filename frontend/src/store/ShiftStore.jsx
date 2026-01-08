@@ -1,7 +1,8 @@
 import { create } from "zustand"
 import axios from "axios"
 
-const baseUrl = "http://localhost:5000/api/shifts"
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+const baseUrl = `${API_URL}/api/shifts`
 
 const useShiftStore = create((set) => ({
     shifts: [],
