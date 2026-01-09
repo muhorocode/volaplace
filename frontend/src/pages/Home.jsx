@@ -1,10 +1,23 @@
 import { useState, useEffect } from "react";
-import { Link } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
+import { useAuth } from "../contexts/AuthContext";
 import SearchMap from "../components/Maps/SearchMap";
+import AuthModal from "../components/AuthModal";
 
 export default function Home() {
   const [userLocation, setUserLocation] = useState(null);
   const [locationError, setLocationError] = useState(null);
+  const [showAuthModal, setShowAuthModal] = useState(false);
+  const [authMode, setAuthMode] = useState('login');
+  const { user } = useAuth();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    // Redirect if already logged in
+    if (user) {
+      navigate(user.role === 'org_admin' ? '/org/dashboard' : '/volunteer/shifts');
+    }
+  }, [user, navigate]);
 
   useEffect(() => {
     // Try to get user's location on mount
@@ -23,30 +36,41 @@ export default function Home() {
     }
   }, []);
 
+  const openAuthModal = (mode) => {
+    setAuthMode(mode);
+    setShowAuthModal(true);
+  };
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Hero Section */}
-      <header className="bg-gradient-to-r from-blue-600 to-blue-800 text-white">
+      <header className="bg-gradient-to-r from-slate-900 to-slate-800 text-white">
         <div className="max-w-7xl mx-auto px-4 py-6">
           <div className="flex justify-between items-center">
             <h1 className="text-2xl font-bold">VolaPlace</h1>
             <div className="space-x-4">
-              <Link to="/login" className="px-4 py-2 rounded-lg hover:bg-white/10 transition">
+              <button 
+                onClick={() => openAuthModal('login')}
+                className="px-4 py-2 rounded-lg hover:bg-white/10 transition"
+              >
                 Login
-              </Link>
-              <Link to="/register" className="px-4 py-2 bg-white text-blue-600 rounded-lg font-medium hover:bg-gray-100 transition">
+              </button>
+              <button 
+                onClick={() => openAuthModal('register')}
+                className="px-4 py-2 bg-orange-600 text-white rounded-lg font-medium hover:bg-orange-700 transition"
+              >
                 Sign Up
-              </Link>
+              </button>
             </div>
           </div>
         </div>
       </header>
 
       {/* Hero Content */}
-      <section className="bg-gradient-to-r from-blue-600 to-blue-800 text-white pb-12">
+      <section className="bg-gradient-to-r from-slate-900 to-slate-800 text-white pb-12">
         <div className="max-w-7xl mx-auto px-4 text-center">
           <h2 className="text-4xl font-bold mb-4">Find Volunteer Opportunities Near You</h2>
-          <p className="text-xl text-blue-100 mb-6 max-w-2xl mx-auto">
+          <p className="text-xl text-slate-300 mb-6 max-w-2xl mx-auto">
             Connect with organizations, track your impact, and get rewarded for making a difference.
           </p>
           {locationError && (
@@ -66,8 +90,8 @@ export default function Home() {
             <SearchMap 
               userLocation={userLocation}
               onShiftSelect={(shift) => {
-                // For public view, prompt to login
                 alert(`To sign up for "${shift.title}", please login or register.`);
+                openAuthModal('login');
               }}
             />
           </div>
@@ -102,17 +126,23 @@ export default function Home() {
       </section>
 
       {/* CTA Section */}
-      <section className="bg-gray-800 text-white py-12">
+      <section className="bg-slate-800 text-white py-12">
         <div className="max-w-7xl mx-auto px-4 text-center">
           <h2 className="text-3xl font-bold mb-4">Ready to Make an Impact?</h2>
-          <p className="text-gray-300 mb-6">Join thousands of volunteers and organizations on VolaPlace.</p>
+          <p className="text-slate-300 mb-6">Join thousands of volunteers and organizations on VolaPlace.</p>
           <div className="space-x-4">
-            <Link to="/register" className="inline-block px-6 py-3 bg-blue-600 rounded-lg font-medium hover:bg-blue-700 transition">
+            <button 
+              onClick={() => openAuthModal('register')}
+              className="inline-block px-6 py-3 bg-orange-600 rounded-lg font-medium hover:bg-orange-700 transition"
+            >
               Get Started as Volunteer
-            </Link>
-            <Link to="/register" className="inline-block px-6 py-3 border border-white rounded-lg font-medium hover:bg-white/10 transition">
+            </button>
+            <button 
+              onClick={() => openAuthModal('register')}
+              className="inline-block px-6 py-3 border border-white rounded-lg font-medium hover:bg-white/10 transition"
+            >
               Register Organization
-            </Link>
+            </button>
           </div>
         </div>
       </section>
@@ -123,6 +153,13 @@ export default function Home() {
           <p>© 2026 VolaPlace. Built with ❤️ for community service.</p>
         </div>
       </footer>
+
+      {/* Auth Modal */}
+      <AuthModal 
+        isOpen={showAuthModal} 
+        onClose={() => setShowAuthModal(false)}
+        initialMode={authMode}
+      />
     </div>
   );
 }

@@ -1,8 +1,6 @@
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { useAuth } from './contexts/AuthContext';
 
-import Login from './pages/Login';
-import Register from './pages/Register';
 import Home from './pages/Home';
 import OrgDashboard from './pages/OrgDashboard';
 import MyShifts from './pages/MyShifts';
@@ -49,10 +47,8 @@ function App() {
 
   return (
     <Routes>
-      {/* Public routes */}
-      <Route path="/" element={user ? <Navigate to={user.role === 'org_admin' ? '/org/dashboard' : '/volunteer/shifts'} /> : <Home />} />
-      <Route path="/login" element={user ? <Navigate to={user.role === 'org_admin' ? '/org/dashboard' : '/volunteer/shifts'} /> : <Login />} />
-      <Route path="/register" element={user ? <Navigate to={user.role === 'org_admin' ? '/org/dashboard' : '/volunteer/shifts'} /> : <Register />} />
+      {/* Public route */}
+      <Route path="/" element={<Home />} />
       
       {/* Organization routes */}
       <Route path="/org/dashboard" element={
