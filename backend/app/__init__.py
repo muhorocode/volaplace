@@ -61,6 +61,7 @@ def create_app():
 
     # Register API blueprints
     from routes.search import api_bp
+    from routes.admin import admin_bp
     from routes.auth import bp as auth_bp
     from routes.users import bp as users_bp
     from routes.organizations import bp as orgs_bp
@@ -69,6 +70,7 @@ def create_app():
     from routes.payments import bp as payments_bp
     
     app.register_blueprint(api_bp)
+    app.register_blueprint(admin_bp)
     app.register_blueprint(auth_bp, url_prefix='/api/auth')  # Auth routes under /api/auth
     app.register_blueprint(users_bp, url_prefix='/api/users')
     app.register_blueprint(orgs_bp, url_prefix='/api/organizations')
