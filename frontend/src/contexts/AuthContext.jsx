@@ -104,6 +104,11 @@ export const AuthProvider = ({ children }) => {
     localStorage.setItem('user', JSON.stringify(updatedUser));
   };
 
+  const setCurrentUser = (userData) => {
+    setUser(userData);
+    localStorage.setItem('user', JSON.stringify(userData));
+  };
+
   const value = {
     user,
     loading,
@@ -111,6 +116,7 @@ export const AuthProvider = ({ children }) => {
     register,
     logout,
     updateUser,
+    setCurrentUser,
     isAuthenticated: !!user,
     isVolunteer: user?.role === 'volunteer',
     isOrgAdmin: user?.role === 'org_admin',

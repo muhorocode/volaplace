@@ -12,7 +12,7 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'login' }) {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const navigate = useNavigate();
-  const { login } = useAuth();
+  const { setCurrentUser } = useAuth();
 
   // Update mode when modal opens with a new initialMode
   useEffect(() => {
@@ -71,6 +71,11 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'login' }) {
         localStorage.setItem('token', data.access_token);
         localStorage.setItem('user', JSON.stringify(data.user));
         
+        // Update AuthContext state with complete user object
+        setCurrentUser(data.user);
+        
+        onClose();
+        
         // Redirect based on role
         if (data.user.role === 'admin') {
           navigate('/admin/dashboard');
@@ -79,7 +84,6 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'login' }) {
         } else {
           navigate('/volunteer/shifts');
         }
-        onClose();
       } else {
         setError(data.error || 'Login failed');
       }
@@ -146,6 +150,9 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'login' }) {
             const loginData = await loginResponse.json();
             localStorage.setItem('token', loginData.access_token);
             localStorage.setItem('user', JSON.stringify(loginData.user));
+            
+            // Update AuthContext state
+            setCurrentUser(loginData.user);
             
             if (loginData.user.role === 'admin') {
               navigate('/admin/dashboard');
