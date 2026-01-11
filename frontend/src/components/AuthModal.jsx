@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import Modal from './Modal';
@@ -6,20 +6,52 @@ import Modal from './Modal';
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
 export default function AuthModal({ isOpen, onClose, initialMode = 'login' }) {
-  const [mode, setMode] = useState(initialMode); // 'login' or 'register'
+  const [mode, setMode] = useState(initialMode);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const navigate = useNavigate();
   const { login } = useAuth();
+
+  // Update mode when modal opens with a new initialMode
+  useEffect(() => {
+    if (isOpen) {
+      setMode(initialMode);
+      setError('');
+    }
+  }, [isOpen, initialMode]);
 
   const [loginForm, setLoginForm] = useState({ email: '', password: '' });
   const [registerForm, setRegisterForm] = useState({
     name: '',
     email: '',
     password: '',
+    confirmPassword: '',
     phone: '',
     role: 'volunteer'
   });
+
+  const [passwordStrength, setPasswordStrength] = useState({
+    hasMinLength: false,
+    hasUpperCase: false,
+    hasNumber: false,
+    hasSpecialChar: false,
+    isStrong: false,
+  });
+
+  // Password strength validation
+  useEffect(() => {
+    const password = registerForm.password;
+    const strength = {
+      hasMinLength: password.length >= 10,
+      hasUpperCase: /[A-Z]/.test(password),
+      hasNumber: /[0-9]/.test(password),
+      hasSpecialChar: /[!@#$%^&*(),.?":{}|<>]/.test(password),
+    };
+    strength.isStrong = Object.values(strength).every(v => v);
+    setPasswordStrength(strength);
+  }, [registerForm.password]);
 
   const handleLoginSubmit = async (e) => {
     e.preventDefault();
