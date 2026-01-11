@@ -15,7 +15,13 @@ export default function Home() {
   useEffect(() => {
     // Redirect if already logged in
     if (user) {
-      navigate(user.role === 'org_admin' ? '/org/dashboard' : '/volunteer/shifts');
+      if (user.role === 'admin') {
+        navigate('/admin/dashboard');
+      } else if (user.role === 'org_admin') {
+        navigate('/org/dashboard');
+      } else {
+        navigate('/volunteer/shifts');
+      }
     }
   }, [user, navigate]);
 

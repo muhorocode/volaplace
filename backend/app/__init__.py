@@ -10,13 +10,19 @@ load_dotenv()
 def create_app():
     app = Flask(__name__)
     
-    # CORS Setup
-    allowed_origins = [
-        "https://volaplace-api.onrender.com",
-        "https://volaplace.vercel.app",
-        "http://localhost:5173",
-    ]
-    CORS(app, origins=allowed_origins)
+    # CORS Setup - Allow all Vercel deployments and local dev
+    CORS(app, 
+         resources={r"/api/*": {
+             "origins": [
+                 "https://volaplace.vercel.app",
+                 "http://localhost:5173",
+                 "http://localhost:3000",
+                 r"https://volaplace-.*\.vercel\.app"  # All preview deployments
+             ],
+             "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+             "allow_headers": ["Content-Type", "Authorization"],
+             "supports_credentials": True
+         }})
 
     # from .env for local.
     uri = os.environ.get('DATABASE_URL')
