@@ -4,6 +4,8 @@ import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 import axios from 'axios';
 
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+
 // Import marker images using ES6 syntax
 import markerIcon2x from 'leaflet/dist/images/marker-icon-2x.png';
 import markerIcon from 'leaflet/dist/images/marker-icon.png';
@@ -48,7 +50,7 @@ const SearchMap = ({ onShiftSelect, userLocation }) => {
       }
 
       const response = await axios.get(
-        `${process.env.REACT_APP_API_URL}/api/shifts`,
+        `${API_URL}/api/shifts`,
         { params }
       );
       

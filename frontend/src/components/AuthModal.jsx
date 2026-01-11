@@ -135,54 +135,12 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'login' }) {
       const data = await response.json();
 
       if (response.ok) {
-        // Auto-login after registration
+        // Registration successful - redirect to login modal
         setError('');
-        
-        // Auto-login after a brief delay
-        setTimeout(async () => {
-          try {
-            const loginResponse = await fetch(`${API_URL}/api/auth/login`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ 
-                email: registerForm.email, 
-                password: registerForm.password 
-              }),
-            });
-
-            if (loginResponse.ok) {
-              const loginData = await loginResponse.json();
-              localStorage.setItem('token', loginData.access_token);
-              localStorage.setItem('user', JSON.stringify(loginData.user));
-              
-              // Update AuthContext state
-              setCurrentUser(loginData.user);
-              
-              // Close modal first
-              onClose();
-              
-              // Navigate after brief delay
-              setTimeout(() => {
-                if (loginData.user.role === 'admin') {
-                  navigate('/admin/dashboard');
-                } else if (loginData.user.role === 'org_admin') {
-                  navigate('/org/dashboard');
-                } else {
-                  navigate('/volunteer/shifts');
-                }
-              }, 100);
-            } else {
-              setError('Registration successful but auto-login failed. Please login manually.');
-              setMode('login');
-              setLoginForm({ email: registerForm.email, password: '' });
-            }
-          } catch (loginErr) {
-            console.error('Auto-login error:', loginErr);
-            setError('Registration successful but auto-login failed. Please login manually.');
-            setMode('login');
-            setLoginForm({ email: registerForm.email, password: '' });
-          }
-        }, 300);
+        setMode('login');
+        setLoginForm({ email: registerForm.email, password: '' });
+        // Show success message
+        setError('✅ Account created successfully! Please sign in.');
       } else {
         setError(data.error || 'Registration failed');
       }

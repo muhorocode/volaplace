@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+
 const ShiftManager = ({ projects }) => {
   const [shifts, setShifts] = useState([]);
   const [formData, setFormData] = useState({
@@ -27,7 +29,7 @@ const ShiftManager = ({ projects }) => {
     try {
       const orgId = localStorage.getItem('orgId');
       const response = await axios.get(
-        `${process.env.REACT_APP_API_URL}/api/organizations/${orgId}/shifts`,
+        `${API_URL}/api/organizations/${orgId}/shifts`,
         {
           headers: {
             'Authorization': `Bearer ${localStorage.getItem('token')}`
@@ -46,7 +48,7 @@ const ShiftManager = ({ projects }) => {
     
     try {
       const response = await axios.post(
-        `${process.env.REACT_APP_API_URL}/api/shifts`,
+        `${API_URL}/api/shifts`,
         formData,
         {
           headers: {

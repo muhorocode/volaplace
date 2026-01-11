@@ -6,6 +6,7 @@ import OrgDashboard from './pages/OrgDashboard';
 import MyShifts from './pages/MyShifts';
 import CheckInPage from './pages/CheckInPage';
 import AdminDashboard from './pages/AdminDashboard';
+import Navbar from './components/Navbar';
 
 // Protected Route wrapper
 function ProtectedRoute({ children, allowedRoles }) {
@@ -20,7 +21,7 @@ function ProtectedRoute({ children, allowedRoles }) {
   }
   
   if (!user) {
-    return <Navigate to="/login" replace />;
+    return <Navigate to="/" replace />;
   }
   
   if (allowedRoles && !allowedRoles.includes(user.role)) {
@@ -48,39 +49,42 @@ function App() {
   }
 
   return (
-    <Routes>
-      {/* Public route */}
-      <Route path="/" element={<Home />} />
-      
-      {/* Admin routes */}
-      <Route path="/admin/dashboard" element={
-        <ProtectedRoute allowedRoles={['admin']}>
-          <AdminDashboard />
-        </ProtectedRoute>
-      } />
-      
-      {/* Organization routes */}
-      <Route path="/org/dashboard" element={
-        <ProtectedRoute allowedRoles={['org_admin']}>
-          <OrgDashboard />
-        </ProtectedRoute>
-      } />
-      
-      {/* Volunteer routes */}
-      <Route path="/volunteer/shifts" element={
-        <ProtectedRoute allowedRoles={['volunteer']}>
-          <MyShifts />
-        </ProtectedRoute>
-      } />
-      <Route path="/volunteer/checkin/:shiftId" element={
-        <ProtectedRoute allowedRoles={['volunteer']}>
-          <CheckInPage />
-        </ProtectedRoute>
-      } />
-      
-      {/* Fallback */}
-      <Route path="*" element={<Navigate to="/" replace />} />
-    </Routes>
+    <>
+      <Navbar />
+      <Routes>
+        {/* Public route */}
+        <Route path="/" element={<Home />} />
+        
+        {/* Admin routes */}
+        <Route path="/admin/dashboard" element={
+          <ProtectedRoute allowedRoles={['admin']}>
+            <AdminDashboard />
+          </ProtectedRoute>
+        } />
+        
+        {/* Organization routes */}
+        <Route path="/org/dashboard" element={
+          <ProtectedRoute allowedRoles={['org_admin']}>
+            <OrgDashboard />
+          </ProtectedRoute>
+        } />
+        
+        {/* Volunteer routes */}
+        <Route path="/volunteer/shifts" element={
+          <ProtectedRoute allowedRoles={['volunteer']}>
+            <MyShifts />
+          </ProtectedRoute>
+        } />
+        <Route path="/volunteer/checkin/:shiftId" element={
+          <ProtectedRoute allowedRoles={['volunteer']}>
+            <CheckInPage />
+          </ProtectedRoute>
+        } />
+        
+        {/* Fallback */}
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    </>
   );
 }
 

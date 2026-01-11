@@ -25,7 +25,7 @@ const OrgDashboard = () => {
     try {
       const orgId = localStorage.getItem('orgId');
       const response = await axios.get(
-        `${process.env.REACT_APP_API_URL}/api/organizations/${orgId}/projects`,
+        `${API_URL}/api/organizations/${orgId}/projects`,
         {
           headers: {
             'Authorization': `Bearer ${localStorage.getItem('token')}`
@@ -48,7 +48,7 @@ const OrgDashboard = () => {
     if (window.confirm('Are you sure you want to delete this project?')) {
       try {
         await axios.delete(
-          `${process.env.REACT_APP_API_URL}/api/projects/${projectId}`,
+          `${API_URL}/api/projects/${projectId}`,
           {
             headers: {
               'Authorization': `Bearer ${localStorage.getItem('token')}`

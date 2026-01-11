@@ -16,6 +16,7 @@ def create_app():
              "origins": [
                  "https://volaplace.vercel.app",
                  "http://localhost:5173",
+                 "http://localhost:5174",
                  "http://localhost:3000",
                  r"https://volaplace-.*\.vercel\.app"  # All preview deployments
              ],
