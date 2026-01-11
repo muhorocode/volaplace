@@ -1,38 +1,43 @@
 import React, { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
+import { useAuth } from '../contexts/AuthContext';
 import CreateProject from '../components/Org/CreateProject';
-import ShiftManager from '../components/Org/ShiftManager'; // You'll create this later
+import ShiftManager from '../components/Org/ShiftManager';
+
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
 const OrgDashboard = () => {
   const [projects, setProjects] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('projects');
   const navigate = useNavigate();
+  const { user } = useAuth();
 
   useEffect(() => {
-    // Check if user is organization
-    const userRole = localStorage.getItem('userRole');
-    if (userRole !== 'organization') {
-      navigate('/login');
+    // Check if user is organization admin
+    if (!user || user.role !== 'org_admin') {
+      navigate('/');
       return;
     }
     
     fetchProjects();
-  }, [navigate]);
+  }, [navigate, user]);
 
   const fetchProjects = async () => {
     try {
-      const orgId = localStorage.getItem('orgId');
+      const token = localStorage.getItem('token');
+      
+      // For now, get all projects - backend should filter by org
       const response = await axios.get(
-        `${API_URL}/api/organizations/${orgId}/projects`,
+        `${API_URL}/api/projects`,
         {
           headers: {
-            'Authorization': `Bearer ${localStorage.getItem('token')}`
+            'Authorization': `Bearer ${token}`
           }
         }
       );
-      setProjects(response.data.projects || []);
+      setProjects(response.data || []);
     } catch (err) {
       console.error('Error fetching projects:', err);
     } finally {
@@ -47,11 +52,12 @@ const OrgDashboard = () => {
   const handleDeleteProject = async (projectId) => {
     if (window.confirm('Are you sure you want to delete this project?')) {
       try {
+        const token = localStorage.getItem('token');
         await axios.delete(
           `${API_URL}/api/projects/${projectId}`,
           {
             headers: {
-              'Authorization': `Bearer ${localStorage.getItem('token')}`
+              'Authorization': `Bearer ${token}`
             }
           }
         );

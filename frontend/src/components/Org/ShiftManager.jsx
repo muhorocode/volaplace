@@ -27,16 +27,17 @@ const ShiftManager = ({ projects }) => {
 
   const fetchShifts = async () => {
     try {
-      const orgId = localStorage.getItem('orgId');
+      const token = localStorage.getItem('token');
+      // Get all shifts - backend should filter appropriately
       const response = await axios.get(
-        `${API_URL}/api/organizations/${orgId}/shifts`,
+        `${API_URL}/api/shifts`,
         {
           headers: {
-            'Authorization': `Bearer ${localStorage.getItem('token')}`
+            'Authorization': `Bearer ${token}`
           }
         }
       );
-      setShifts(response.data.shifts || []);
+      setShifts(response.data || []);
     } catch (err) {
       console.error('Error fetching shifts:', err);
     }
@@ -47,17 +48,18 @@ const ShiftManager = ({ projects }) => {
     setIsSubmitting(true);
     
     try {
+      const token = localStorage.getItem('token');
       const response = await axios.post(
         `${API_URL}/api/shifts`,
         formData,
         {
           headers: {
-            'Authorization': `Bearer ${localStorage.getItem('token')}`
+            'Authorization': `Bearer ${token}`
           }
         }
       );
       
-      if (response.status === 201) {
+      if (response.status === 201 || response.status === 200) {
         alert('Shift created successfully!');
         setFormData({
           title: '',

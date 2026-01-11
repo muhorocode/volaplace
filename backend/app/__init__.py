@@ -12,18 +12,32 @@ def create_app():
     
     # CORS Setup - Allow all Vercel deployments and local dev
     CORS(app, 
-         resources={r"/api/*": {
-             "origins": [
-                 "https://volaplace.vercel.app",
-                 "http://localhost:5173",
-                 "http://localhost:5174",
-                 "http://localhost:3000",
-                 r"https://volaplace-.*\.vercel\.app"  # All preview deployments
-             ],
-             "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-             "allow_headers": ["Content-Type", "Authorization"],
-             "supports_credentials": True
-         }})
+         resources={
+             r"/api/*": {
+                 "origins": [
+                     "https://volaplace.vercel.app",
+                     "http://localhost:5173",
+                     "http://localhost:5174",
+                     "http://localhost:3000",
+                     r"https://volaplace-.*\.vercel\.app"
+                 ],
+                 "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+                 "allow_headers": ["Content-Type", "Authorization"],
+                 "supports_credentials": True
+             },
+             r"/admin/*": {
+                 "origins": [
+                     "https://volaplace.vercel.app",
+                     "http://localhost:5173",
+                     "http://localhost:5174",
+                     "http://localhost:3000",
+                     r"https://volaplace-.*\.vercel\.app"
+                 ],
+                 "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+                 "allow_headers": ["Content-Type", "Authorization"],
+                 "supports_credentials": True
+             }
+         })
 
     # from .env for local.
     uri = os.environ.get('DATABASE_URL')
@@ -72,6 +86,7 @@ def create_app():
     from routes.auth import bp as auth_bp
     from routes.users import bp as users_bp
     from routes.organizations import bp as orgs_bp
+    from routes.projects import bp as projects_bp
     from routes.shifts import bp as shifts_bp
     from routes.attendance import bp as attendance_bp
     from routes.payments import bp as payments_bp
@@ -81,6 +96,7 @@ def create_app():
     app.register_blueprint(auth_bp, url_prefix='/api/auth')  # Auth routes under /api/auth
     app.register_blueprint(users_bp, url_prefix='/api/users')
     app.register_blueprint(orgs_bp, url_prefix='/api/organizations')
+    app.register_blueprint(projects_bp, url_prefix='/api/projects')
     app.register_blueprint(shifts_bp, url_prefix='/api/shifts')
     app.register_blueprint(attendance_bp, url_prefix='/api/attendance')
     app.register_blueprint(payments_bp, url_prefix='/api/payments')

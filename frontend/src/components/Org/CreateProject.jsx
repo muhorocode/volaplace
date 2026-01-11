@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import axios from 'axios';
+import { useAuth } from '../../contexts/AuthContext';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
@@ -14,6 +15,7 @@ const CreateProject = ({ onProjectCreated }) => {
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
+  const { user } = useAuth();
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -29,14 +31,15 @@ const CreateProject = ({ onProjectCreated }) => {
     setError('');
 
     try {
-      // Get organization ID from localStorage or auth context
-      const orgId = localStorage.getItem('orgId') || 1; // Fallback for testing
+      const token = localStorage.getItem('token');
       
       const projectData = {
-        ...formData,
-        organization_id: orgId,
-        latitude: parseFloat(formData.latitude),
-        longitude: parseFloat(formData.longitude)
+        name: formData.name,
+        description: formData.description,
+        lat: parseFloat(formData.latitude),
+        lon: parseFloat(formData.longitude),
+        geofence_radius: formData.geofenceRadius,
+        user_id: user.id
       };
 
       const response = await axios.post(
@@ -44,13 +47,13 @@ const CreateProject = ({ onProjectCreated }) => {
         projectData,
         {
           headers: {
-            'Authorization': `Bearer ${localStorage.getItem('token')}`,
+            'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json'
           }
         }
       );
 
-      if (response.status === 201) {
+      if (response.status === 201 || response.status === 200) {
         alert('Project location created successfully!');
         setFormData({
           name: '',
@@ -61,7 +64,7 @@ const CreateProject = ({ onProjectCreated }) => {
         });
         
         if (onProjectCreated) {
-          onProjectCreated(response.data.project);
+          onProjectCreated(response.data.project || response.data);
         }
       }
     } catch (err) {
