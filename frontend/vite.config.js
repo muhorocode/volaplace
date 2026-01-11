@@ -5,18 +5,16 @@ import tailwindcss from "@tailwindcss/vite";
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [react(), tailwindcss()],
-  build: {
-    target: 'esnext',
-    minify: 'esbuild',
-    rollupOptions: {
-      output: {
-        manualChunks: undefined,
-      }
-    }
+  server: {
+    host: true,
+    port: 5173
   },
-  optimizeDeps: {
-    esbuildOptions: {
-      target: 'esnext'
+  build: {
+    target: 'es2015',
+    outDir: 'dist',
+    sourcemap: false,
+    commonjsOptions: {
+      transformMixedEsModules: true
     }
   }
 });
