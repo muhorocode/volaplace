@@ -5,6 +5,7 @@ import Home from './pages/Home';
 import OrgDashboard from './pages/OrgDashboard';
 import MyShifts from './pages/MyShifts';
 import CheckInPage from './pages/CheckInPage';
+import AdminDashboard from './pages/AdminDashboard';
 
 // Protected Route wrapper
 function ProtectedRoute({ children, allowedRoles }) {
@@ -24,6 +25,7 @@ function ProtectedRoute({ children, allowedRoles }) {
   
   if (allowedRoles && !allowedRoles.includes(user.role)) {
     // Redirect to appropriate dashboard based on role
+    if (user.role === 'admin') return <Navigate to="/admin/dashboard" replace />;
     if (user.role === 'org_admin') return <Navigate to="/org/dashboard" replace />;
     return <Navigate to="/volunteer/shifts" replace />;
   }
@@ -50,21 +52,28 @@ function App() {
       {/* Public route */}
       <Route path="/" element={<Home />} />
       
+      {/* Admin routes */}
+      <Route path="/admin/dashboard" element={
+        <ProtectedRoute allowedRoles={['admin']}>
+          <AdminDashboard />
+        </ProtectedRoute>
+      } />
+      
       {/* Organization routes */}
       <Route path="/org/dashboard" element={
-        <ProtectedRoute allowedRoles={['org_admin', 'admin']}>
+        <ProtectedRoute allowedRoles={['org_admin']}>
           <OrgDashboard />
         </ProtectedRoute>
       } />
       
       {/* Volunteer routes */}
       <Route path="/volunteer/shifts" element={
-        <ProtectedRoute allowedRoles={['volunteer', 'admin']}>
+        <ProtectedRoute allowedRoles={['volunteer']}>
           <MyShifts />
         </ProtectedRoute>
       } />
       <Route path="/volunteer/checkin/:shiftId" element={
-        <ProtectedRoute allowedRoles={['volunteer', 'admin']}>
+        <ProtectedRoute allowedRoles={['volunteer']}>
           <CheckInPage />
         </ProtectedRoute>
       } />

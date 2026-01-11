@@ -40,7 +40,9 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'login' }) {
         localStorage.setItem('user', JSON.stringify(data.user));
         
         // Redirect based on role
-        if (data.user.role === 'org_admin') {
+        if (data.user.role === 'admin') {
+          navigate('/admin/dashboard');
+        } else if (data.user.role === 'org_admin') {
           navigate('/org/dashboard');
         } else {
           navigate('/volunteer/shifts');
@@ -98,7 +100,9 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'login' }) {
             localStorage.setItem('token', loginData.access_token);
             localStorage.setItem('user', JSON.stringify(loginData.user));
             
-            if (loginData.user.role === 'org_admin') {
+            if (loginData.user.role === 'admin') {
+              navigate('/admin/dashboard');
+            } else if (loginData.user.role === 'org_admin') {
               navigate('/org/dashboard');
             } else {
               navigate('/volunteer/shifts');
