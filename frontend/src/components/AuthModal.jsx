@@ -62,18 +62,33 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'login' }) {
     e.preventDefault();
     setError('');
 
+    // Validation
     if (!registerForm.name || !registerForm.email || !registerForm.password || !registerForm.phone) {
       setError('All fields are required');
+      return;
+    }
+
+    // Password strength check
+    if (!passwordStrength.isStrong) {
+      setError('Password does not meet strength requirements');
+      return;
+    }
+
+    // Password confirmation check
+    if (registerForm.password !== registerForm.confirmPassword) {
+      setError('Passwords do not match');
       return;
     }
 
     setLoading(true);
 
     try {
+      const { confirmPassword, ...registrationData } = registerForm;
+      
       const response = await fetch(`${API_URL}/api/auth/register`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(registerForm),
+        body: JSON.stringify(registrationData),
       });
 
       const data = await response.json();
@@ -250,19 +265,105 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'login' }) {
               <label className="block text-sm font-semibold text-slate-700 mb-2">
                 Password
               </label>
-              <input
-                type="password"
-                placeholder="Create a strong password"
-                className="w-full px-4 py-3 rounded-lg border border-slate-300 focus:ring-2 focus:ring-orange-500 focus:border-transparent transition"
-                value={registerForm.password}
-                onChange={(e) => setRegisterForm({ ...registerForm, password: e.target.value })}
-                required
-              />
+              <div className="relative">
+                <input
+                  type={showPassword ? "text" : "password"}
+                  placeholder="Create a strong password"
+                  className="w-full px-4 py-3 rounded-lg border border-slate-300 focus:ring-2 focus:ring-orange-500 focus:border-transparent transition"
+                  value={registerForm.password}
+                  onChange={(e) => setRegisterForm({ ...registerForm, password: e.target.value })}
+                  required
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-700"
+                >
+                  {showPassword ? '👁️' : '👁️‍🗨️'}
+                </button>
+              </div>
+              
+              {/* Password Strength Indicator */}
+              {registerForm.password && (
+                <div className="mt-2 space-y-2">
+                  <div className="text-xs space-y-1">
+                    <div className={`flex items-center gap-1 ${passwordStrength.hasMinLength ? 'text-green-600' : 'text-slate-400'}`}>
+                      <span>{passwordStrength.hasMinLength ? '✓' : '○'}</span>
+                      <span>At least 10 characters</span>
+                    </div>
+                    <div className={`flex items-center gap-1 ${passwordStrength.hasUpperCase ? 'text-green-600' : 'text-slate-400'}`}>
+                      <span>{passwordStrength.hasUpperCase ? '✓' : '○'}</span>
+                      <span>One uppercase letter</span>
+                    </div>
+                    <div className={`flex items-center gap-1 ${passwordStrength.hasNumber ? 'text-green-600' : 'text-slate-400'}`}>
+                      <span>{passwordStrength.hasNumber ? '✓' : '○'}</span>
+                      <span>One number</span>
+                    </div>
+                    <div className={`flex items-center gap-1 ${passwordStrength.hasSpecialChar ? 'text-green-600' : 'text-slate-400'}`}>
+                      <span>{passwordStrength.hasSpecialChar ? '✓' : '○'}</span>
+                      <span>One special character (!@#$%^&*)</span>
+                    </div>
+                  </div>
+                  <div className="h-2 bg-slate-200 rounded-full overflow-hidden">
+                    <div 
+                      className={`h-full transition-all duration-300 ${
+                        passwordStrength.isStrong ? 'bg-green-500 w-full' :
+                        Object.values(passwordStrength).filter(Boolean).length >= 3 ? 'bg-yellow-500 w-3/4' :
+                        Object.values(passwordStrength).filter(Boolean).length >= 2 ? 'bg-orange-500 w-1/2' :
+                        'bg-red-500 w-1/4'
+                      }`}
+                    ></div>
+                  </div>
+                  <p className={`text-xs font-medium ${
+                    passwordStrength.isStrong ? 'text-green-600' :
+                    Object.values(passwordStrength).filter(Boolean).length >= 3 ? 'text-yellow-600' :
+                    'text-red-600'
+                  }`}>
+                    {passwordStrength.isStrong ? 'Strong password!' :
+                     Object.values(passwordStrength).filter(Boolean).length >= 3 ? 'Almost there...' :
+                     'Weak password'}
+                  </p>
+                </div>
+              )}
+            </div>
+
+            <div>
+              <label className="block text-sm font-semibold text-slate-700 mb-2">
+                Confirm Password
+              </label>
+              <div className="relative">
+                <input
+                  type={showConfirmPassword ? "text" : "password"}
+                  placeholder="Re-enter your password"
+                  className={`w-full px-4 py-3 rounded-lg border ${
+                    registerForm.confirmPassword && registerForm.password !== registerForm.confirmPassword
+                      ? 'border-red-300 focus:ring-red-500'
+                      : 'border-slate-300 focus:ring-orange-500'
+                  } focus:ring-2 focus:border-transparent transition`}
+                  value={registerForm.confirmPassword}
+                  onChange={(e) => setRegisterForm({ ...registerForm, confirmPassword: e.target.value })}
+                  required
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-700"
+                >
+                  {showConfirmPassword ? '👁️' : '👁️‍🗨️'}
+                </button>
+              </div>
+              {registerForm.confirmPassword && (
+                <p className={`text-xs mt-1 ${
+                  registerForm.password === registerForm.confirmPassword ? 'text-green-600' : 'text-red-600'
+                }`}>
+                  {registerForm.password === registerForm.confirmPassword ? '✓ Passwords match' : '✗ Passwords do not match'}
+                </p>
+              )}
             </div>
 
             <button
               type="submit"
-              disabled={loading}
+              disabled={loading || !passwordStrength.isStrong || registerForm.password !== registerForm.confirmPassword}
               className={`w-full py-3 rounded-lg font-semibold text-white transition ${
                 loading
                   ? 'bg-slate-400 cursor-not-allowed'
