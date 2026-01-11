@@ -68,26 +68,31 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'login' }) {
       const data = await response.json();
 
       if (response.ok) {
+        // Store data first
         localStorage.setItem('token', data.access_token);
         localStorage.setItem('user', JSON.stringify(data.user));
         
-        // Update AuthContext state with complete user object
+        // Update AuthContext state
         setCurrentUser(data.user);
         
+        // Close modal first
         onClose();
         
-        // Redirect based on role
-        if (data.user.role === 'admin') {
-          navigate('/admin/dashboard');
-        } else if (data.user.role === 'org_admin') {
-          navigate('/org/dashboard');
-        } else {
-          navigate('/volunteer/shifts');
-        }
+        // Small delay to let state propagate, then navigate
+        setTimeout(() => {
+          if (data.user.role === 'admin') {
+            navigate('/admin/dashboard');
+          } else if (data.user.role === 'org_admin') {
+            navigate('/org/dashboard');
+          } else {
+            navigate('/volunteer/shifts');
+          }
+        }, 100);
       } else {
         setError(data.error || 'Login failed');
       }
     } catch (err) {
+      console.error('Login error:', err);
       setError('Unable to connect to server');
     } finally {
       setLoading(false);
@@ -131,43 +136,58 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'login' }) {
 
       if (response.ok) {
         // Auto-login after registration
-        setMode('login');
-        setLoginForm({ email: registerForm.email, password: registerForm.password });
         setError('');
         
-        // Show success message briefly then auto-login
+        // Auto-login after a brief delay
         setTimeout(async () => {
-          const loginResponse = await fetch(`${API_URL}/api/auth/login`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ 
-              email: registerForm.email, 
-              password: registerForm.password 
-            }),
-          });
+          try {
+            const loginResponse = await fetch(`${API_URL}/api/auth/login`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ 
+                email: registerForm.email, 
+                password: registerForm.password 
+              }),
+            });
 
-          if (loginResponse.ok) {
-            const loginData = await loginResponse.json();
-            localStorage.setItem('token', loginData.access_token);
-            localStorage.setItem('user', JSON.stringify(loginData.user));
-            
-            // Update AuthContext state
-            setCurrentUser(loginData.user);
-            
-            if (loginData.user.role === 'admin') {
-              navigate('/admin/dashboard');
-            } else if (loginData.user.role === 'org_admin') {
-              navigate('/org/dashboard');
+            if (loginResponse.ok) {
+              const loginData = await loginResponse.json();
+              localStorage.setItem('token', loginData.access_token);
+              localStorage.setItem('user', JSON.stringify(loginData.user));
+              
+              // Update AuthContext state
+              setCurrentUser(loginData.user);
+              
+              // Close modal first
+              onClose();
+              
+              // Navigate after brief delay
+              setTimeout(() => {
+                if (loginData.user.role === 'admin') {
+                  navigate('/admin/dashboard');
+                } else if (loginData.user.role === 'org_admin') {
+                  navigate('/org/dashboard');
+                } else {
+                  navigate('/volunteer/shifts');
+                }
+              }, 100);
             } else {
-              navigate('/volunteer/shifts');
+              setError('Registration successful but auto-login failed. Please login manually.');
+              setMode('login');
+              setLoginForm({ email: registerForm.email, password: '' });
             }
-            onClose();
+          } catch (loginErr) {
+            console.error('Auto-login error:', loginErr);
+            setError('Registration successful but auto-login failed. Please login manually.');
+            setMode('login');
+            setLoginForm({ email: registerForm.email, password: '' });
           }
-        }, 500);
+        }, 300);
       } else {
         setError(data.error || 'Registration failed');
       }
     } catch (err) {
+      console.error('Registration error:', err);
       setError('Unable to connect to server');
     } finally {
       setLoading(false);

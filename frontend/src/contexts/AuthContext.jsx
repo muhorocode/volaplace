@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import axios from 'axios';
 
 const AuthContext = createContext(null);
@@ -8,16 +8,28 @@ const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
+  const verificationDone = useRef(false);
 
-  // Check if user is logged in on mount
+  // Check if user is logged in on mount - only once
   useEffect(() => {
+    if (verificationDone.current) return;
+    verificationDone.current = true;
+    
     const token = localStorage.getItem('token');
     const savedUser = localStorage.getItem('user');
     
     if (token && savedUser) {
-      setUser(JSON.parse(savedUser));
-      // Verify token is still valid
-      verifyToken(token);
+      try {
+        const parsedUser = JSON.parse(savedUser);
+        setUser(parsedUser);
+        // Verify token is still valid (async, won't block)
+        verifyToken(token);
+      } catch (e) {
+        // Invalid stored user data
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        setLoading(false);
+      }
     } else {
       setLoading(false);
     }
@@ -32,11 +44,20 @@ export const AuthProvider = ({ children }) => {
       if (response.data.authenticated) {
         setUser(response.data.user);
       } else {
-        logout();
+        // Token invalid, clear storage but don't trigger re-renders
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        setUser(null);
       }
     } catch (error) {
       console.error('Token verification failed:', error);
-      logout();
+      // On error, keep user logged in with cached data
+      // Only clear if it's a 401/403
+      if (error.response?.status === 401 || error.response?.status === 403) {
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        setUser(null);
+      }
     } finally {
       setLoading(false);
     }

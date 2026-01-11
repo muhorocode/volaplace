@@ -150,6 +150,43 @@ def get_current_user():
         return jsonify({"error": f"Failed to get user: {str(e)}"}), 500
 
 
+@bp.route('/check', methods=['GET'])
+@jwt_required()
+def check_auth():
+    """
+    Check if user is authenticated with valid JWT token.
+    Requires: Authorization: Bearer <token>
+    """
+    try:
+        user_id = get_jwt_identity()
+        user = User.query.get(user_id)
+        
+        if not user:
+            return jsonify({"authenticated": False}), 200
+        
+        return jsonify({
+            "authenticated": True,
+            "user": {
+                "id": user.id,
+                "email": user.email,
+                "name": user.name,
+                "role": user.role,
+                "phone": user.phone
+            }
+        }), 200
+        
+    except Exception as e:
+        return jsonify({"authenticated": False, "error": str(e)}), 200
+
+
+@bp.route('/logout', methods=['POST'])
+def logout():
+    """
+    Logout user (client should discard the token).
+    """
+    return jsonify({"message": "Logged out successfully"}), 200
+
+
 @bp.route('/test', methods=['GET'])
 def test():
     return jsonify({"message": "auth routes are working!"}), 200
