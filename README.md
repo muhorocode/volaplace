@@ -803,6 +803,298 @@ For questions or issues:
 
 ---
 
+## 🎯 Complete User Guide
+
+### 🌐 Production Access
+
+**Live URLs:**
+- Frontend: https://volaplace.vercel.app
+- Backend API: https://volaplace-api.onrender.com
+
+### 🔑 Getting Started
+
+**For Testing:** Run the seed script to create test accounts:
+```bash
+cd backend
+flask db upgrade  # Initialize database
+python seed.py    # Create test data
+```
+
+---
+
+### 👥 Volunteer Guide
+
+#### 1. Registration & Discovery
+
+**Sign Up:**
+1. Click "Sign Up" on homepage
+2. Select role: "Volunteer"
+3. Provide name, email, phone (format: 254XXXXXXXXX), password
+4. Redirected to volunteer dashboard
+
+**Discover Opportunities:**
+- **Map View**: See available shifts as colored markers
+- **Location-Based**: Allow GPS access for proximity sorting
+- **Shift Cards**: View details (date, time, distance, organization)
+
+#### 2. Enrolling in Shifts
+
+1. Browse available shifts on map or dashboard
+2. Click "Sign Up" on desired shift
+3. View enrolled shifts in "My Shifts" tab
+
+#### 3. Geo-Verified Check-In
+
+**Requirements:**
+- Must be within 20 meters of shift location
+- Current date matches shift date
+- Time within shift window
+
+**Process:**
+1. Navigate to Check-In page from "My Shifts"
+2. Allow location access when prompted
+3. Map shows:
+   - Blue circle = 20m geofence
+   - Red marker = Your location
+   - Distance indicator
+4. If within 20m, "Check In" button activates
+5. Click to confirm attendance
+
+**Example:**
+```
+✅ "You are 15 meters from location" → Check-in enabled
+❌ "You are 156 meters away" → Move closer
+```
+
+#### 4. Check-Out & Payment
+
+**Process:**
+1. Complete volunteer work
+2. Check-out button enables near shift end time
+3. Must still be within 20m radius
+4. Enter beneficiaries served (number of people helped)
+5. System calculates payment:
+   ```
+   Stipend = (Hourly Rate × Hours) + (Bonus × Beneficiaries)
+   Example: (150 KES × 4 hrs) + (12 KES × 25 people) = 900 KES
+   ```
+6. M-Pesa payment sent automatically to registered phone
+7. Approve STK Push on phone to receive funds
+
+**Dashboard Features:**
+- View upcoming shifts
+- Track completed shifts
+- See payment history
+- Personal stats (hours, beneficiaries, earnings)
+
+---
+
+### 🏢 Organization Guide
+
+#### 1. Organization Setup
+
+**Registration:**
+1. Click "Sign Up"
+2. Select role: "Organization"
+3. Provide organization name, admin details, credentials
+4. Access organization dashboard
+
+#### 2. Creating Project Locations
+
+**What is a Project?**
+A physical location where volunteer work happens with GPS coordinates and geofence.
+
+**Steps:**
+1. Click "Create New Project"
+2. Enter project name and address
+3. Set location:
+   - **Option A**: Click on map to place marker
+   - **Option B**: Enter coordinates manually
+4. Set geofence radius (default: 20 meters)
+5. Submit to create
+
+#### 3. Creating Volunteer Shifts
+
+**Steps:**
+1. Click "Create New Shift"
+2. Select project location (dropdown)
+3. Fill shift details:
+   - Title and description
+   - Date and time (start/end)
+   - Number of volunteers needed
+4. Submit - shift goes live immediately
+5. Volunteers can now see and sign up
+
+#### 4. Managing Operations
+
+**Shift Roster:**
+- View all volunteers signed up
+- Real-time check-in status
+- Green checkmark = Checked in
+- Yellow clock = Signed up, not checked in
+- Track attendance and completion
+
+**Dashboard Tabs:**
+- **Projects**: Manage all project locations
+- **Shifts**: View upcoming, active, and completed
+- **Volunteers**: See volunteer history and contacts
+
+**Statistics:**
+- Active projects count
+- Upcoming shifts
+- Total volunteers engaged
+- Completed shifts
+
+---
+
+### ⚙️ Admin Guide
+
+#### 1. Admin Access
+
+Admin accounts manage platform-wide settings and monitoring.
+
+**Login:** Use admin credentials created via seed script or manual setup.
+
+**Dashboard Access:** Automatically redirected to `/admin/dashboard`
+
+#### 2. Platform Statistics
+
+**Real-Time Metrics:**
+- Total Beneficiaries Served
+- Total Paid Out (KES)
+- Pending Payouts (KES)
+- Active Volunteers
+- Organizations registered
+- Project Locations
+- Active Shifts
+
+#### 3. Global Payout Rules
+
+**Understanding the Formula:**
+```
+Stipend = (Base Hourly Rate × Hours Worked) + (Bonus per Beneficiary × Beneficiaries Served)
+```
+
+**Managing Rules:**
+1. View current rates in dashboard
+2. Click "Edit Rules"
+3. Update values:
+   - Base Hourly Rate (KES)
+   - Bonus per Beneficiary (KES)
+4. Preview calculation shows impact
+5. Save changes - applies to all future payments
+
+**Example:**
+```
+Current: 150 KES/hour + 12 KES/beneficiary
+Updated: 200 KES/hour + 15 KES/beneficiary
+Impact: 4-hour shift with 20 beneficiaries = 1,100 KES (vs. 840 KES)
+```
+
+#### 4. Payment Reconciliation
+
+**Transaction Log:**
+View all M-Pesa transactions with:
+- Volunteer name
+- Phone number
+- Amount
+- Status (completed/pending/failed)
+
+**Status Indicators:**
+- **✅ Completed**: Payment successful
+- **⏳ Pending**: Awaiting confirmation
+- **❌ Failed**: Requires attention
+
+**Troubleshooting Failed Payments:**
+- Verify phone number format (254XXXXXXXXX)
+- Check M-Pesa credentials in environment variables
+- Review Render logs for errors
+- Retry manually if needed
+
+#### 5. Platform Monitoring
+
+**Organization Oversight:**
+- View all registered organizations
+- Monitor organization activity
+- Track shifts created per org
+- Review volunteer engagement
+
+**Impact Reports:**
+Generate summaries of:
+- Total platform beneficiaries
+- Total volunteer hours
+- Total disbursements
+- Organization performance metrics
+
+---
+
+### ✅ Testing Checklist
+
+**Volunteer Flow:**
+- [ ] Register and login
+- [ ] Browse shifts on map
+- [ ] Sign up for shift
+- [ ] Check-in with location verification
+- [ ] Check-out and enter beneficiaries
+- [ ] Receive M-Pesa payment
+
+**Organization Flow:**
+- [ ] Register organization
+- [ ] Create project location
+- [ ] Create volunteer shift
+- [ ] View volunteer roster
+- [ ] Monitor check-in status
+
+**Admin Flow:**
+- [ ] Access admin dashboard
+- [ ] View platform statistics
+- [ ] Update payout rules
+- [ ] Review transaction log
+- [ ] Monitor organizations
+
+---
+
+### 🐛 Troubleshooting
+
+**Location Permission Issues:**
+- Check browser settings for location access
+- Allow location for volaplace domain
+- Refresh page after granting permission
+
+**"Too Far from Location" Error:**
+- Must be within 20 meters of shift location
+- Verify correct shift location on map
+- Move closer to the geofence circle
+
+**Shift Not Appearing:**
+- Verify shift date is current or future
+- Check available spots remaining
+- Confirm project has valid coordinates
+- Refresh page to reload data
+
+**M-Pesa Payment Issues:**
+- Verify phone number format (254XXXXXXXXX)
+- Check Render environment variables
+- Review backend logs for errors
+- Confirm M-Pesa account has sufficient balance
+
+---
+
+### 📱 Mobile Usage
+
+**Best Experience:**
+- Use actual mobile device for GPS accuracy
+- Native M-Pesa app for payments
+- Portrait mode optimized
+- Touch-friendly interface
+
+**Desktop Testing:**
+- Chrome DevTools → Sensors → Override geolocation
+- Use coordinates from seed data for testing
+- Mobile view in browser (F12 → Device toolbar)
+
+---
+
 ## 📄 License
 
 This project is developed as part of the Phase 5 Capstone Project for educational purposes.
