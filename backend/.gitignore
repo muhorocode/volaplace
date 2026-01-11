@@ -1,0 +1,21 @@
+# Backend specific ignores
+.enviro/
+__pycache__/
+*.pyc
+.env
+instance/
+# Python bytecode
+**/__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Environments
+.venv/
+env/
+venv/
+ENV/
+
+# Database (keep your local dev db separate from remote)
+*.db
+*.sqlite3

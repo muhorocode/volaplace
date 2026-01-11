@@ -1,0 +1,58 @@
+# --- Security (The most important part) ---
+.env
+**/.env
+**/.env.*
+
+# --- Python (Backend) ---
+backend/venv/
+backend/__pycache__/
+**/__pycache__/
+backend/*.pyc
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+env/
+venv*/
+backend_backup/venv/
+*.egg-info/
+dist/
+build/
+
+# --- Logs & Database ---
+*.log
+server.log
+*.sqlite
+*.db
+backend/instance/
+
+# --- Node (Frontend) ---
+node_modules/
+**/node_modules/
+frontend/dist/
+frontend/.vercel
+
+# --- IDE ---
+.vscode/
+.idea/
+
+# --- OS Junk ---
+.DS_Store
+Thumbs.db
+
+# --- Deployment ---
+.vercel
+
+# --- Presentation & Guides ---
+local_files/
+GUIDE.md
+TESTING_GUIDE.md
+POSTMAN_GUIDE.md
+CHEAT_SHEET.md
+COMPLETE_SUMMARY.md
+JUNIOR_DEV_PRESENTATION_GUIDE.md
+PRESENTATION_DEMO_SCRIPT.md
+POSTMAN_RELOAD_GUIDE.md
+POSTMAN_MOCK_DATA.md
+ELIJAH_REMAINING_WORK.md

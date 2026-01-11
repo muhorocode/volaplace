@@ -1,21 +1,86 @@
-import { useEffect, useState } from 'react';
+import { Routes, Route, Navigate } from 'react-router-dom';
+import { useAuth } from './contexts/AuthContext';
+
+import Home from './pages/Home';
+import OrgDashboard from './pages/OrgDashboard';
+import MyShifts from './pages/MyShifts';
+import CheckInPage from './pages/CheckInPage';
+import AdminDashboard from './pages/AdminDashboard';
+
+// Protected Route wrapper
+function ProtectedRoute({ children, allowedRoles }) {
+  const { user, loading } = useAuth();
+  
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      </div>
+    );
+  }
+  
+  if (!user) {
+    return <Navigate to="/login" replace />;
+  }
+  
+  if (allowedRoles && !allowedRoles.includes(user.role)) {
+    // Redirect to appropriate dashboard based on role
+    if (user.role === 'admin') return <Navigate to="/admin/dashboard" replace />;
+    if (user.role === 'org_admin') return <Navigate to="/org/dashboard" replace />;
+    return <Navigate to="/volunteer/shifts" replace />;
+  }
+  
+  return children;
+}
 
 function App() {
-  const [apiStatus, setApiStatus] = useState('Checking...');
+  const { user, loading } = useAuth();
 
-  useEffect(() => {
-    fetch(process.env.REACT_APP_API_URL || 'http://localhost:5000/api/health')
-      .then(res => res.json())
-      .then(data => setApiStatus(data.status))
-      .catch(() => setApiStatus('disconnected'));
-  }, []);
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Loading VolaPlace...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div style={{ padding: '40px', fontFamily: 'Arial, sans-serif' }}>
-      <h1>VolaPlace</h1>
-      <p>Geo-verified volunteer marketplace</p>
-      <p>Backend Status: <strong>{apiStatus}</strong></p>
-    </div>
+    <Routes>
+      {/* Public route */}
+      <Route path="/" element={<Home />} />
+      
+      {/* Admin routes */}
+      <Route path="/admin/dashboard" element={
+        <ProtectedRoute allowedRoles={['admin']}>
+          <AdminDashboard />
+        </ProtectedRoute>
+      } />
+      
+      {/* Organization routes */}
+      <Route path="/org/dashboard" element={
+        <ProtectedRoute allowedRoles={['org_admin']}>
+          <OrgDashboard />
+        </ProtectedRoute>
+      } />
+      
+      {/* Volunteer routes */}
+      <Route path="/volunteer/shifts" element={
+        <ProtectedRoute allowedRoles={['volunteer']}>
+          <MyShifts />
+        </ProtectedRoute>
+      } />
+      <Route path="/volunteer/checkin/:shiftId" element={
+        <ProtectedRoute allowedRoles={['volunteer']}>
+          <CheckInPage />
+        </ProtectedRoute>
+      } />
+      
+      {/* Fallback */}
+      <Route path="*" element={<Navigate to="/" replace />} />
+    </Routes>
   );
 }
 
