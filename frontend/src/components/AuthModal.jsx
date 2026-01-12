@@ -12,7 +12,7 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'login' }) {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const navigate = useNavigate();
-  const { login } = useAuth();
+  const { setCurrentUser } = useAuth();
 
   // Update mode when modal opens with a new initialMode
   useEffect(() => {
@@ -68,22 +68,31 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'login' }) {
       const data = await response.json();
 
       if (response.ok) {
+        // Store data first
         localStorage.setItem('token', data.access_token);
         localStorage.setItem('user', JSON.stringify(data.user));
         
-        // Redirect based on role
-        if (data.user.role === 'admin') {
-          navigate('/admin/dashboard');
-        } else if (data.user.role === 'org_admin') {
-          navigate('/org/dashboard');
-        } else {
-          navigate('/volunteer/shifts');
-        }
+        // Update AuthContext state
+        setCurrentUser(data.user);
+        
+        // Close modal first
         onClose();
+        
+        // Small delay to let state propagate, then navigate
+        setTimeout(() => {
+          if (data.user.role === 'admin') {
+            navigate('/admin/dashboard');
+          } else if (data.user.role === 'org_admin') {
+            navigate('/org/dashboard');
+          } else {
+            navigate('/volunteer/shifts');
+          }
+        }, 100);
       } else {
         setError(data.error || 'Login failed');
       }
     } catch (err) {
+      console.error('Login error:', err);
       setError('Unable to connect to server');
     } finally {
       setLoading(false);
@@ -126,41 +135,17 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'login' }) {
       const data = await response.json();
 
       if (response.ok) {
-        // Auto-login after registration
-        setMode('login');
-        setLoginForm({ email: registerForm.email, password: registerForm.password });
+        // Registration successful - redirect to login modal
         setError('');
-        
-        // Show success message briefly then auto-login
-        setTimeout(async () => {
-          const loginResponse = await fetch(`${API_URL}/api/auth/login`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ 
-              email: registerForm.email, 
-              password: registerForm.password 
-            }),
-          });
-
-          if (loginResponse.ok) {
-            const loginData = await loginResponse.json();
-            localStorage.setItem('token', loginData.access_token);
-            localStorage.setItem('user', JSON.stringify(loginData.user));
-            
-            if (loginData.user.role === 'admin') {
-              navigate('/admin/dashboard');
-            } else if (loginData.user.role === 'org_admin') {
-              navigate('/org/dashboard');
-            } else {
-              navigate('/volunteer/shifts');
-            }
-            onClose();
-          }
-        }, 500);
+        setMode('login');
+        setLoginForm({ email: registerForm.email, password: '' });
+        // Show success message
+        setError('✅ Account created successfully! Please sign in.');
       } else {
         setError(data.error || 'Registration failed');
       }
     } catch (err) {
+      console.error('Registration error:', err);
       setError('Unable to connect to server');
     } finally {
       setLoading(false);

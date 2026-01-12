@@ -1,6 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
+import { useAuth } from '../contexts/AuthContext';
+
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
 const MyShifts = () => {
   const [shifts, setShifts] = useState([]);
@@ -12,34 +15,37 @@ const MyShifts = () => {
     totalBeneficiaries: 0
   });
   const navigate = useNavigate();
+  const { user } = useAuth();
 
   useEffect(() => {
     // Check if user is volunteer
-    const userRole = localStorage.getItem('userRole');
-    if (userRole !== 'volunteer') {
-      navigate('/login');
+    if (!user || user.role !== 'volunteer') {
+      navigate('/');
       return;
     }
     
     fetchMyShifts();
-  }, [navigate]);
+  }, [navigate, user]);
 
   const fetchMyShifts = async () => {
     try {
-      const volunteerId = localStorage.getItem('userId');
-      const response = await axios.get(
-        `${process.env.REACT_APP_API_URL}/api/volunteers/${volunteerId}/shifts`,
-        {
-          headers: {
-            'Authorization': `Bearer ${localStorage.getItem('token')}`
-          }
-        }
-      );
+      const token = localStorage.getItem('token');
       
-      setShifts(response.data.shifts || []);
-      calculateStats(response.data.shifts || []);
+      // Get all shifts first (we'll filter user-specific ones later when backend supports it)
+      const response = await axios.get(`${API_URL}/api/shifts`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      
+      setShifts(response.data || []);
+      calculateStats(response.data || []);
     } catch (err) {
       console.error('Error fetching shifts:', err);
+      // If unauthorized, redirect to home
+      if (err.response?.status === 401) {
+        navigate('/');
+      }
     } finally {
       setLoading(false);
     }
@@ -75,12 +81,13 @@ const MyShifts = () => {
 
   const handleCheckIn = async (shiftId) => {
     try {
+      const token = localStorage.getItem('token');
       const response = await axios.post(
-        `${process.env.REACT_APP_API_URL}/api/shifts/${shiftId}/checkin`,
+        `${API_URL}/api/shifts/${shiftId}/checkin`,
         {},
         {
           headers: {
-            'Authorization': `Bearer ${localStorage.getItem('token')}`
+            'Authorization': `Bearer ${token}`
           }
         }
       );
@@ -103,12 +110,13 @@ const MyShifts = () => {
     }
 
     try {
+      const token = localStorage.getItem('token');
       const response = await axios.post(
-        `${process.env.REACT_APP_API_URL}/api/shifts/${shiftId}/checkout`,
+        `${API_URL}/api/shifts/${shiftId}/checkout`,
         { beneficiaries_served: parseInt(beneficiaries) },
         {
           headers: {
-            'Authorization': `Bearer ${localStorage.getItem('token')}`
+            'Authorization': `Bearer ${token}`
           }
         }
       );
