@@ -16,11 +16,13 @@ def get_projects():
         return jsonify([{
             'id': p.id,
             'name': p.name,
+            'description': p.description,
             'lat': p.lat,
             'lon': p.lon,
             'address': p.address,
             'geofence_radius': p.geofence_radius,
-            'org_id': p.org_id
+            'org_id': p.org_id,
+            'created_at': p.created_at.isoformat() if p.created_at else None
         } for p in projects]), 200
     except Exception as e:
         return jsonify({'error': str(e)}), 500
@@ -54,6 +56,7 @@ def create_project():
         
         project = Project(
             name=data['name'],
+            description=data.get('description', ''),
             lat=float(data['lat']),
             lon=float(data['lon']),
             address=data.get('address', ''),
@@ -67,6 +70,7 @@ def create_project():
         return jsonify({
             'id': project.id,
             'name': project.name,
+            'description': project.description,
             'lat': project.lat,
             'lon': project.lon,
             'address': project.address,

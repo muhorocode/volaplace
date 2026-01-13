@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import axios from 'axios';
 import { useAuth } from '../contexts/AuthContext';
 import CreateProject from '../components/Org/CreateProject';
@@ -156,13 +156,13 @@ const OrgDashboard = () => {
                         </p>
                         <div className="mt-2 flex items-center space-x-4 text-sm text-gray-500">
                           <span>
-                            📍 {project.latitude.toFixed(6)}, {project.longitude.toFixed(6)}
+                            📍 {project.lat?.toFixed(6)}, {project.lon?.toFixed(6)}
                           </span>
                           <span>
                             ⭕ Geofence: {project.geofence_radius}m
                           </span>
                           <span>
-                            📅 Created: {new Date(project.created_at).toLocaleDateString()}
+                            📅 Created: {project.created_at ? new Date(project.created_at).toLocaleDateString() : 'N/A'}
                           </span>
                         </div>
                       </div>

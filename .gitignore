@@ -48,6 +48,10 @@ Thumbs.db
 local_files/
 GUIDE.md
 TESTING_GUIDE.md
+PRODUCTION_DEPLOYMENT_GUIDE.md
+
+# --- Testing ---
+test_endpoints.sh
 POSTMAN_GUIDE.md
 CHEAT_SHEET.md
 COMPLETE_SUMMARY.md

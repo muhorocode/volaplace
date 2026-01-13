@@ -54,9 +54,12 @@ const SearchMap = ({ onShiftSelect, userLocation }) => {
         { params }
       );
       
-      setShifts(response.data.shifts || []);
+      // Handle both array response and object with shifts property
+      const shiftsData = Array.isArray(response.data) ? response.data : (response.data.shifts || response.data || []);
+      setShifts(shiftsData);
     } catch (err) {
       console.error('Error fetching shifts:', err);
+      setShifts([]);
     } finally {
       setLoading(false);
     }
@@ -121,10 +124,20 @@ const SearchMap = ({ onShiftSelect, userLocation }) => {
         )}
 
         {/* Shift markers */}
-        {shifts.map((shift) => (
+        {shifts.map((shift) => {
+          // Get project coordinates - handle different data structures
+          const lat = shift.project?.lat || shift.project_latitude;
+          const lon = shift.project?.lon || shift.project_longitude;
+          const projectName = shift.project?.name || shift.project_name || 'Unknown Project';
+          const geofenceRadius = shift.project?.geofence_radius || shift.geofence_radius || 100;
+          
+          // Skip if no valid coordinates
+          if (!lat || !lon) return null;
+          
+          return (
           <div key={shift.id}>
             <Marker
-              position={[shift.project_latitude, shift.project_longitude]}
+              position={[lat, lon]}
               icon={getShiftIcon(shift.status)}
               eventHandlers={{
                 click: () => handleShiftClick(shift)
@@ -132,21 +145,23 @@ const SearchMap = ({ onShiftSelect, userLocation }) => {
             >
               <Popup>
                 <div className="p-2">
-                  <h3 className="font-bold text-lg">{shift.project_name}</h3>
+                  <h3 className="font-bold text-lg">{projectName}</h3>
                   <p className="text-sm text-gray-600">{shift.title}</p>
                   <div className="mt-2 space-y-1">
                     <p className="text-sm">
-                      📅 {new Date(shift.shift_date).toLocaleDateString()}
+                      📅 {shift.date ? new Date(shift.date).toLocaleDateString() : 'N/A'}
                     </p>
                     <p className="text-sm">
                       ⏰ {shift.start_time} - {shift.end_time}
                     </p>
                     <p className="text-sm">
-                      👥 {shift.volunteers_signed_up}/{shift.required_volunteers} volunteers
+                      👥 {shift.max_volunteers || 0} volunteers needed
                     </p>
-                    <p className="text-sm">
-                      📍 Distance: {shift.distance ? `${shift.distance.toFixed(1)} km` : 'N/A'}
-                    </p>
+                    {shift.distance_km && (
+                      <p className="text-sm">
+                        📍 Distance: {shift.distance_km.toFixed(1)} km
+                      </p>
+                    )}
                   </div>
                   <button
                     onClick={() => handleShiftClick(shift)}
@@ -160,15 +175,15 @@ const SearchMap = ({ onShiftSelect, userLocation }) => {
             
             {/* Geofence circle */}
             <Circle
-              center={[shift.project_latitude, shift.project_longitude]}
-              radius={shift.geofence_radius || 100}
+              center={[lat, lon]}
+              radius={geofenceRadius}
               pathOptions={{ 
                 color: shift.status === 'active' ? 'green' : 'blue',
                 fillOpacity: 0.1 
               }}
             />
           </div>
-        ))}
+        )})}
       </MapContainer>
 
       {/* Map controls */}

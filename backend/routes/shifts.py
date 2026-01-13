@@ -71,6 +71,53 @@ def create_shift():
         db.session.rollback()
         return jsonify({'error': str(e)}), 500
 
+@bp.route('', methods=['GET'])
+@jwt_required()
+def get_shifts():
+    """Get all shifts - optionally filtered by project_id"""
+    try:
+        user_id = get_jwt_identity()
+        user = User.query.get(user_id)
+        
+        project_id = request.args.get('project_id', type=int)
+        
+        query = Shift.query
+        
+        # If user is org_admin, only show their organization's shifts
+        if user.role == 'org_admin':
+            org = Organization.query.filter_by(user_id=user_id).first()
+            if org:
+                project_ids = [p.id for p in org.projects]
+                query = query.filter(Shift.project_id.in_(project_ids))
+        
+        # Filter by specific project if requested
+        if project_id:
+            query = query.filter_by(project_id=project_id)
+        
+        shifts = query.order_by(Shift.date.desc()).all()
+        
+        return jsonify([{
+            'id': s.id,
+            'title': s.title,
+            'description': s.description,
+            'date': s.date.isoformat() if s.date else None,
+            'start_time': s.start_time.isoformat() if s.start_time else None,
+            'end_time': s.end_time.isoformat() if s.end_time else None,
+            'max_volunteers': s.max_volunteers,
+            'status': s.status,
+            'project_id': s.project_id,
+            'project': {
+                'name': s.project.name,
+                'lat': s.project.lat,
+                'lon': s.project.lon,
+                'geofence_radius': s.project.geofence_radius
+            } if s.project else None
+        } for s in shifts]), 200
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
 @bp.route('/test', methods=['GET'])
 def test():
     return jsonify({"message": "shifts routes are working!"}), 200
+
