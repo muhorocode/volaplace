@@ -53,6 +53,19 @@ def create_app():
     migrate.init_app(app, db)
     jwt = JWTManager(app)
 
+    # JWT Error Handlers
+    @jwt.invalid_token_loader
+    def invalid_token_callback(error_string):
+        return jsonify({"error": "Invalid token", "details": str(error_string)}), 422
+
+    @jwt.unauthorized_loader
+    def unauthorized_callback(error_string):
+        return jsonify({"error": "Authorization required", "details": str(error_string)}), 401
+
+    @jwt.expired_token_loader
+    def expired_token_callback(jwt_header, jwt_payload):
+        return jsonify({"error": "Token has expired"}), 401
+
     # import models inside factory.
     # this prevents circular imports and registers models with SQLAlchemy
     with app.app_context():
