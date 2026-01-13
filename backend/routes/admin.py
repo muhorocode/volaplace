@@ -8,11 +8,14 @@ admin_bp = Blueprint('admin', __name__)
 
 def admin_required():
     """Decorator to check if user is admin"""
-    user_id = int(get_jwt_identity())  # Convert string to int
-    user = User.query.get(user_id)
-    if not user or user.role != 'admin':
-        return jsonify({"error": "Admin access required"}), 403
-    return None
+    try:
+        user_id = int(get_jwt_identity())  # Convert string to int
+        user = User.query.get(user_id)
+        if not user or user.role != 'admin':
+            return jsonify({"error": "Admin access required"}), 403
+        return None
+    except Exception as e:
+        return jsonify({"error": f"Authentication error: {str(e)}"}), 422
 
 @admin_bp.route('/dashboard-stats', methods=['GET'])
 @jwt_required()

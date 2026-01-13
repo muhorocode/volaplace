@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import axios from 'axios';
+import toast, { Toaster } from 'react-hot-toast';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
 export default function AdminDashboard() {
-  const { token } = useAuth();
+  const { user } = useAuth();
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState(null);
   const [rules, setRules] = useState(null);
@@ -25,6 +26,7 @@ export default function AdminDashboard() {
   const fetchDashboardData = async () => {
     try {
       setLoading(true);
+      const token = localStorage.getItem('token');
       const headers = { Authorization: `Bearer ${token}` };
 
       // Fetch all admin data
@@ -54,6 +56,7 @@ export default function AdminDashboard() {
     setSuccess('');
 
     try {
+      const token = localStorage.getItem('token');
       const response = await axios.put(
         `${API_URL}/api/admin/global-rules`,
         formData,
@@ -61,13 +64,18 @@ export default function AdminDashboard() {
       );
 
       setRules(response.data.rules);
-      setSuccess('Payout rules updated successfully!');
+      toast.success('Payout rules updated successfully!', {
+        duration: 4000,
+        position: 'top-right',
+      });
       setEditingRules(false);
-      
-      // Refresh stats after update
-      setTimeout(() => setSuccess(''), 3000);
     } catch (err) {
-      setError(err.response?.data?.error || 'Failed to update rules');
+      const errorMsg = err.response?.data?.error || 'Failed to update rules';
+      setError(errorMsg);
+      toast.error(`❌ ${errorMsg}`, {
+        duration: 4000,
+        position: 'top-right',
+      });
     }
   };
 
@@ -84,6 +92,7 @@ export default function AdminDashboard() {
 
   return (
     <div className="min-h-screen bg-gray-50 py-8">
+      <Toaster />
       <div className="max-w-7xl mx-auto px-4">
         {/* Header */}
         <div className="mb-8">
