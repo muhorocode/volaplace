@@ -32,7 +32,7 @@ def get_projects():
 def create_project():
     """Create a new project"""
     try:
-        user_id = get_jwt_identity()
+        user_id = int(get_jwt_identity())
         user = User.query.get(user_id)
         
         if user.role not in ['org_admin', 'admin']:
@@ -87,7 +87,7 @@ def create_project():
 def delete_project(project_id):
     """Delete a project"""
     try:
-        user_id = get_jwt_identity()
+        user_id = int(get_jwt_identity())
         user = User.query.get(user_id)
         
         project = Project.query.get(project_id)

@@ -13,7 +13,7 @@ bp = Blueprint('organizations', __name__)
 def get_organizations():
     """Get all organizations or user's organization"""
     try:
-        user_id = get_jwt_identity()
+        user_id = int(get_jwt_identity())
         user = User.query.get(user_id)
         
         if user.role == 'admin':
@@ -37,7 +37,7 @@ def get_organizations():
 def create_organization():
     """Create a new organization"""
     try:
-        user_id = get_jwt_identity()
+        user_id = int(get_jwt_identity())
         user = User.query.get(user_id)
         
         if user.role not in ['org_admin', 'admin']:
