@@ -264,3 +264,157 @@ def register_for_shift(shift_id):
         db.session.rollback()
         return jsonify({'error': str(e)}), 500
 
+
+@bp.route('/<int:shift_id>/checkin', methods=['POST'])
+@jwt_required()
+def checkin_shift(shift_id):
+    """Check in to a shift"""
+    try:
+        from app.models import ShiftRoster
+        from datetime import datetime
+        
+        user_id = int(get_jwt_identity())
+        user = User.query.get(user_id)
+        
+        if user.role != 'volunteer':
+            return jsonify({'error': 'Only volunteers can check in'}), 403
+        
+        shift = Shift.query.get(shift_id)
+        if not shift:
+            return jsonify({'error': 'Shift not found'}), 404
+        
+        # Find roster entry
+        roster_entry = ShiftRoster.query.filter_by(
+            shift_id=shift_id, 
+            volunteer_id=user_id
+        ).first()
+        
+        if not roster_entry:
+            # Auto-register if not already registered
+            roster_entry = ShiftRoster(
+                shift_id=shift_id,
+                volunteer_id=user_id,
+                status='registered'
+            )
+            db.session.add(roster_entry)
+        
+        if roster_entry.check_in_time:
+            return jsonify({'error': 'Already checked in'}), 400
+        
+        roster_entry.check_in_time = datetime.utcnow()
+        roster_entry.status = 'checked_in'
+        db.session.commit()
+        
+        return jsonify({
+            'message': 'Checked in successfully',
+            'check_in_time': roster_entry.check_in_time.isoformat()
+        }), 200
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
+
+
+@bp.route('/<int:shift_id>/checkout', methods=['POST'])
+@jwt_required()
+def checkout_shift(shift_id):
+    """Check out from a shift"""
+    try:
+        from app.models import ShiftRoster, GlobalRules, TransactionLog
+        from datetime import datetime
+        
+        user_id = int(get_jwt_identity())
+        user = User.query.get(user_id)
+        
+        if user.role != 'volunteer':
+            return jsonify({'error': 'Only volunteers can check out'}), 403
+        
+        data = request.get_json() or {}
+        beneficiaries_served = data.get('beneficiaries_served', 0)
+        
+        shift = Shift.query.get(shift_id)
+        if not shift:
+            return jsonify({'error': 'Shift not found'}), 404
+        
+        # Find roster entry
+        roster_entry = ShiftRoster.query.filter_by(
+            shift_id=shift_id, 
+            volunteer_id=user_id
+        ).first()
+        
+        if not roster_entry:
+            return jsonify({'error': 'Not registered for this shift'}), 404
+        
+        if not roster_entry.check_in_time:
+            return jsonify({'error': 'Must check in first'}), 400
+        
+        if roster_entry.check_out_time:
+            return jsonify({'error': 'Already checked out'}), 400
+        
+        roster_entry.check_out_time = datetime.utcnow()
+        roster_entry.beneficiaries_served = beneficiaries_served
+        roster_entry.status = 'completed'
+        
+        # Calculate payment
+        time_diff = roster_entry.check_out_time - roster_entry.check_in_time
+        hours_worked = time_diff.total_seconds() / 3600
+        
+        rules = GlobalRules.query.first()
+        base_rate = rules.base_hourly_rate if rules else 100.0
+        bonus_per_beneficiary = rules.bonus_per_beneficiary if rules else 10.0
+        
+        base_payment = hours_worked * base_rate
+        beneficiary_bonus = beneficiaries_served * bonus_per_beneficiary
+        total_amount = base_payment + beneficiary_bonus
+        
+        roster_entry.payout_amount = total_amount
+        
+        db.session.commit()
+        
+        return jsonify({
+            'message': 'Checked out successfully',
+            'check_out_time': roster_entry.check_out_time.isoformat(),
+            'hours_worked': round(hours_worked, 2),
+            'beneficiaries_served': beneficiaries_served,
+            'payout_amount': round(total_amount, 2)
+        }), 200
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
+
+
+@bp.route('/<int:shift_id>', methods=['GET'])
+@jwt_required()
+def get_shift_details(shift_id):
+    """Get details of a specific shift"""
+    try:
+        shift = Shift.query.get(shift_id)
+        if not shift:
+            return jsonify({'error': 'Shift not found'}), 404
+        
+        project = shift.project
+        
+        return jsonify({
+            'id': shift.id,
+            'title': shift.title,
+            'description': shift.description,
+            'date': shift.date.isoformat() if shift.date else None,
+            'start_time': shift.start_time.isoformat() if shift.start_time else None,
+            'end_time': shift.end_time.isoformat() if shift.end_time else None,
+            'max_volunteers': shift.max_volunteers,
+            'status': shift.status,
+            'project': {
+                'id': project.id,
+                'name': project.name,
+                'description': project.description,
+                'lat': project.lat,
+                'lon': project.lon,
+                'geofence_radius': project.geofence_radius
+            } if project else None,
+            'volunteers_registered': len(shift.roster_entries) if shift.roster_entries else 0
+        }), 200
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+

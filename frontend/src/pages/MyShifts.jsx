@@ -442,7 +442,7 @@ const MyShifts = () => {
                             Check In
                           </button>
                           <button
-                            onClick={() => navigate(`/shift/${shift.id}/details`)}
+                            onClick={() => setShowShiftDetails(shift)}
                             className="px-4 py-2 bg-blue-600 text-white text-sm rounded hover:bg-blue-700"
                           >
                             View Details
@@ -461,10 +461,10 @@ const MyShifts = () => {
                       
                       {shift.status === 'completed' && (
                         <button
-                          onClick={() => navigate(`/shift/${shift.id}/receipt`)}
+                          onClick={() => setShowShiftDetails(shift)}
                           className="px-4 py-2 bg-gray-600 text-white text-sm rounded hover:bg-gray-700"
                         >
-                          View Receipt
+                          View Details
                         </button>
                       )}
                       
