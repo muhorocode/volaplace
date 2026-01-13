@@ -51,9 +51,9 @@ export const AuthProvider = ({ children }) => {
       }
     } catch (error) {
       console.error('Token verification failed:', error);
-      // On error, keep user logged in with cached data
-      // Only clear if it's a 401/403
-      if (error.response?.status === 401 || error.response?.status === 403) {
+      // Clear token on any auth error (401, 403, 422)
+      // 422 happens when token format is invalid
+      if (error.response?.status === 401 || error.response?.status === 403 || error.response?.status === 422) {
         localStorage.removeItem('token');
         localStorage.removeItem('user');
         setUser(null);
