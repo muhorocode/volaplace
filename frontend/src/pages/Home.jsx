@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 import SearchMap from "../components/Maps/SearchMap";
 import AuthModal from "../components/AuthModal";
+import toast, { Toaster } from 'react-hot-toast';
 
 export default function Home() {
   const [userLocation, setUserLocation] = useState(null);
@@ -49,6 +50,7 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-gray-50">
+      <Toaster position="top-right" />
       {/* Hero Section */}
       <header className="bg-gradient-to-r from-slate-900 to-slate-800 text-white">
         <div className="max-w-7xl mx-auto px-4 py-6">
@@ -96,7 +98,10 @@ export default function Home() {
             <SearchMap 
               userLocation={userLocation}
               onShiftSelect={(shift) => {
-                alert(`To sign up for "${shift.title}", please login or register.`);
+                toast(`To sign up for "${shift.title}", please login or register.`, {
+                  icon: '📋',
+                  duration: 4000
+                });
                 openAuthModal('login');
               }}
             />

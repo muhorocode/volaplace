@@ -121,3 +121,146 @@ def get_shifts():
 def test():
     return jsonify({"message": "shifts routes are working!"}), 200
 
+
+@bp.route('/<int:shift_id>', methods=['PUT'])
+@jwt_required()
+def update_shift(shift_id):
+    """Update a shift"""
+    try:
+        user_id = int(get_jwt_identity())
+        user = User.query.get(user_id)
+        
+        shift = Shift.query.get(shift_id)
+        if not shift:
+            return jsonify({'error': 'Shift not found'}), 404
+        
+        # Verify ownership
+        project = Project.query.get(shift.project_id)
+        org = Organization.query.get(project.org_id)
+        if org.user_id != user_id and user.role != 'admin':
+            return jsonify({'error': 'Unauthorized'}), 403
+        
+        data = request.get_json()
+        
+        # Update fields
+        if 'title' in data:
+            shift.title = data['title']
+        if 'description' in data:
+            shift.description = data['description']
+        if 'shift_date' in data:
+            shift.date = datetime.strptime(data['shift_date'], '%Y-%m-%d').date()
+        if 'start_time' in data:
+            shift.start_time = datetime.strptime(data['start_time'], '%H:%M').time()
+        if 'end_time' in data:
+            shift.end_time = datetime.strptime(data['end_time'], '%H:%M').time()
+        if 'required_volunteers' in data:
+            shift.max_volunteers = data['required_volunteers']
+        if 'status' in data:
+            shift.status = data['status']
+        
+        db.session.commit()
+        
+        return jsonify({
+            'message': 'Shift updated successfully',
+            'shift': {
+                'id': shift.id,
+                'title': shift.title,
+                'description': shift.description,
+                'date': shift.date.isoformat() if shift.date else None,
+                'start_time': shift.start_time.isoformat() if shift.start_time else None,
+                'end_time': shift.end_time.isoformat() if shift.end_time else None,
+                'max_volunteers': shift.max_volunteers,
+                'status': shift.status
+            }
+        }), 200
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
+
+
+@bp.route('/<int:shift_id>', methods=['DELETE'])
+@jwt_required()
+def delete_shift(shift_id):
+    """Delete a shift"""
+    try:
+        user_id = int(get_jwt_identity())
+        user = User.query.get(user_id)
+        
+        shift = Shift.query.get(shift_id)
+        if not shift:
+            return jsonify({'error': 'Shift not found'}), 404
+        
+        # Verify ownership
+        project = Project.query.get(shift.project_id)
+        org = Organization.query.get(project.org_id)
+        if org.user_id != user_id and user.role != 'admin':
+            return jsonify({'error': 'Unauthorized'}), 403
+        
+        # Check if shift has volunteers assigned
+        if shift.roster_entries and len(shift.roster_entries) > 0:
+            return jsonify({'error': 'Cannot delete shift with assigned volunteers'}), 400
+        
+        db.session.delete(shift)
+        db.session.commit()
+        
+        return jsonify({'message': 'Shift deleted successfully'}), 200
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
+
+
+@bp.route('/<int:shift_id>/register', methods=['POST'])
+@jwt_required()
+def register_for_shift(shift_id):
+    """Register a volunteer for a shift"""
+    try:
+        from app.models import ShiftRoster
+        
+        user_id = int(get_jwt_identity())
+        user = User.query.get(user_id)
+        
+        if user.role != 'volunteer':
+            return jsonify({'error': 'Only volunteers can register for shifts'}), 403
+        
+        shift = Shift.query.get(shift_id)
+        if not shift:
+            return jsonify({'error': 'Shift not found'}), 404
+        
+        if shift.status != 'upcoming':
+            return jsonify({'error': 'Can only register for upcoming shifts'}), 400
+        
+        # Check if already registered
+        existing = ShiftRoster.query.filter_by(
+            shift_id=shift_id, 
+            volunteer_id=user_id
+        ).first()
+        
+        if existing:
+            return jsonify({'error': 'Already registered for this shift'}), 400
+        
+        # Check if shift is full
+        current_count = ShiftRoster.query.filter_by(shift_id=shift_id).count()
+        if current_count >= shift.max_volunteers:
+            return jsonify({'error': 'Shift is full'}), 400
+        
+        # Create roster entry
+        roster_entry = ShiftRoster(
+            shift_id=shift_id,
+            volunteer_id=user_id,
+            status='registered'
+        )
+        
+        db.session.add(roster_entry)
+        db.session.commit()
+        
+        return jsonify({
+            'message': 'Successfully registered for shift',
+            'roster_id': roster_entry.id
+        }), 201
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
+

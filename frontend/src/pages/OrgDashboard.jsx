@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import axios from 'axios';
+import toast, { Toaster } from 'react-hot-toast';
 import { useAuth } from '../contexts/AuthContext';
 import CreateProject from '../components/Org/CreateProject';
 import ShiftManager from '../components/Org/ShiftManager';
@@ -47,6 +48,8 @@ const OrgDashboard = () => {
 
   const handleProjectCreated = (newProject) => {
     setProjects(prev => [...prev, newProject]);
+    setActiveTab('projects'); // Navigate to Project Locations tab
+    toast.success('Project location created successfully!');
   };
 
   const handleDeleteProject = async (projectId) => {
@@ -62,10 +65,10 @@ const OrgDashboard = () => {
           }
         );
         setProjects(prev => prev.filter(p => p.id !== projectId));
-        alert('Project deleted successfully');
+        toast.success('Project deleted successfully');
       } catch (err) {
         console.error('Error deleting project:', err);
-        alert('Failed to delete project');
+        toast.error(err.response?.data?.error || 'Failed to delete project');
       }
     }
   };
@@ -80,6 +83,7 @@ const OrgDashboard = () => {
 
   return (
     <div className="min-h-screen bg-gray-50">
+      <Toaster position="top-right" />
       {/* Header */}
       <header className="bg-white shadow">
         <div className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">

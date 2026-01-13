@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import axios from 'axios';
+import toast from 'react-hot-toast';
 import { useAuth } from '../../contexts/AuthContext';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
@@ -54,7 +55,7 @@ const CreateProject = ({ onProjectCreated }) => {
       );
 
       if (response.status === 201 || response.status === 200) {
-        alert('Project location created successfully!');
+        toast.success('Project location created successfully!');
         setFormData({
           name: '',
           latitude: '',
