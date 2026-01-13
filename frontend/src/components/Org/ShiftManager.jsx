@@ -20,6 +20,12 @@ const ShiftManager = ({ projects }) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [editingShift, setEditingShift] = useState(null);
   const [showEditModal, setShowEditModal] = useState(false);
+  
+  // Fund shift state
+  const [showFundModal, setShowFundModal] = useState(false);
+  const [fundingShift, setFundingShift] = useState(null);
+  const [fundAmount, setFundAmount] = useState(5000);
+  const [isFunding, setIsFunding] = useState(false);
 
   useEffect(() => {
     if (projects.length > 0 && !formData.project_id) {
@@ -110,6 +116,48 @@ const ShiftManager = ({ projects }) => {
       }
     } catch (err) {
       toast.error(err.response?.data?.error || 'Failed to delete shift');
+    }
+  };
+
+  // Fund shift handlers
+  const handleOpenFundModal = (shift) => {
+    setFundingShift(shift);
+    setFundAmount(5000);
+    setShowFundModal(true);
+  };
+
+  const handleFundShift = async (useDemo = false) => {
+    if (!fundingShift) return;
+    setIsFunding(true);
+    
+    try {
+      const token = localStorage.getItem('token');
+      const endpoint = useDemo ? '/api/payments/fund-shift-demo' : '/api/payments/fund-shift';
+      
+      const response = await axios.post(
+        `${API_URL}${endpoint}`,
+        {
+          shift_id: fundingShift.id,
+          amount: fundAmount
+        },
+        {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        }
+      );
+      
+      if (response.data.message) {
+        toast.success(response.data.message);
+        setShowFundModal(false);
+        setFundingShift(null);
+        fetchShifts();
+      }
+    } catch (err) {
+      console.error('Fund error:', err);
+      toast.error(err.response?.data?.error || 'Failed to fund shift');
+    } finally {
+      setIsFunding(false);
     }
   };
 
@@ -312,6 +360,7 @@ const ShiftManager = ({ projects }) => {
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Title</th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date & Time</th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Volunteers</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Funding</th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
                 </tr>
@@ -328,6 +377,17 @@ const ShiftManager = ({ projects }) => {
                       {shift.volunteers_signed_up}/{shift.required_volunteers}
                     </td>
                     <td className="px-4 py-3">
+                      {shift.is_funded ? (
+                        <span className="px-2 py-1 text-xs rounded-full bg-green-100 text-green-800">
+                          KES {(shift.funded_amount || 0).toLocaleString()}
+                        </span>
+                      ) : (
+                        <span className="px-2 py-1 text-xs rounded-full bg-yellow-100 text-yellow-800">
+                          Not Funded
+                        </span>
+                      )}
+                    </td>
+                    <td className="px-4 py-3">
                       <span className={`px-2 py-1 text-xs rounded-full ${
                         shift.status === 'active' ? 'bg-green-100 text-green-800' :
                         shift.status === 'completed' ? 'bg-blue-100 text-blue-800' :
@@ -337,6 +397,12 @@ const ShiftManager = ({ projects }) => {
                       </span>
                     </td>
                     <td className="px-4 py-3 text-sm space-x-2">
+                      <button 
+                        onClick={() => handleOpenFundModal(shift)}
+                        className="text-green-600 hover:text-green-800 font-medium"
+                      >
+                        Fund
+                      </button>
                       <button 
                         onClick={() => handleEditShift(shift)}
                         className="text-blue-600 hover:text-blue-800"
@@ -478,6 +544,83 @@ const ShiftManager = ({ projects }) => {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Fund Shift Modal */}
+      {showFundModal && fundingShift && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-md">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-xl font-bold text-gray-800">Fund Shift</h3>
+              <button 
+                onClick={() => setShowFundModal(false)}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                ✕
+              </button>
+            </div>
+            
+            <div className="mb-4 p-3 bg-gray-50 rounded-md">
+              <p className="font-medium text-gray-800">{fundingShift.title}</p>
+              <p className="text-sm text-gray-500">
+                {new Date(fundingShift.shift_date).toLocaleDateString()} • {fundingShift.start_time} - {fundingShift.end_time}
+              </p>
+              {fundingShift.is_funded && (
+                <p className="text-sm text-green-600 mt-1">
+                  Current Budget: KES {(fundingShift.funded_amount || 0).toLocaleString()}
+                </p>
+              )}
+            </div>
+            
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Amount to Add (KES)
+              </label>
+              <input
+                type="number"
+                min="100"
+                step="100"
+                value={fundAmount}
+                onChange={(e) => setFundAmount(parseInt(e.target.value) || 0)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                placeholder="Enter amount"
+              />
+              <p className="text-xs text-gray-500 mt-1">
+                Minimum: KES 100. This amount will be added to the shift budget to pay volunteers.
+              </p>
+            </div>
+            
+            <div className="bg-blue-50 p-3 rounded-md mb-4">
+              <p className="text-sm text-blue-800">
+                <strong>How it works:</strong> You'll receive an M-Pesa prompt on your phone to deposit funds. Once confirmed, volunteers can receive payments from this shift's budget when they check out.
+              </p>
+            </div>
+            
+            <div className="flex flex-col space-y-3">
+              <button
+                onClick={() => handleFundShift(false)}
+                disabled={isFunding || fundAmount < 100}
+                className="w-full bg-green-600 text-white py-2 px-4 rounded-md hover:bg-green-700 disabled:opacity-50"
+              >
+                {isFunding ? 'Processing...' : `Fund with M-Pesa (KES ${fundAmount.toLocaleString()})`}
+              </button>
+              <button
+                onClick={() => handleFundShift(true)}
+                disabled={isFunding || fundAmount < 100}
+                className="w-full bg-gray-600 text-white py-2 px-4 rounded-md hover:bg-gray-700 disabled:opacity-50"
+              >
+                {isFunding ? 'Processing...' : 'Demo Mode (Skip M-Pesa)'}
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowFundModal(false)}
+                className="w-full px-4 py-2 border border-gray-300 rounded-md hover:bg-gray-50"
+              >
+                Cancel
+              </button>
+            </div>
           </div>
         </div>
       )}

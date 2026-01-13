@@ -156,7 +156,16 @@ const MyShifts = () => {
       );
       
       if (response.status === 200) {
-        toast.success('Checked out successfully! Payment has been processed.');
+        const { message, payout_amount, payment_status } = response.data;
+        
+        if (payment_status === 'completed') {
+          toast.success(`${message} You earned KES ${payout_amount}!`);
+        } else if (payment_status === 'partial') {
+          toast.success(message);
+        } else {
+          toast.success(`Checked out! Earned KES ${payout_amount}. ${message}`);
+        }
+        
         setShowCheckoutModal(false);
         setCheckoutShiftId(null);
         setBeneficiariesCount('');

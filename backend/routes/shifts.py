@@ -120,9 +120,11 @@ def get_shifts():
                 'title': s.title,
                 'description': s.description,
                 'date': s.date.isoformat() if s.date else None,
+                'shift_date': s.date.isoformat() if s.date else None,  # Alias for frontend
                 'start_time': s.start_time.isoformat() if s.start_time else None,
                 'end_time': s.end_time.isoformat() if s.end_time else None,
                 'max_volunteers': s.max_volunteers,
+                'required_volunteers': s.max_volunteers,  # Alias for frontend
                 'status': s.status,
                 'project_id': s.project_id,
                 'project': {
@@ -131,7 +133,10 @@ def get_shifts():
                     'lon': s.project.lon,
                     'geofence_radius': s.project.geofence_radius
                 } if s.project else None,
-                'volunteers_signed_up': len(s.roster_entries) if s.roster_entries else 0
+                'volunteers_signed_up': len(s.roster_entries) if s.roster_entries else 0,
+                # Funding fields
+                'is_funded': s.is_funded if hasattr(s, 'is_funded') else False,
+                'funded_amount': s.funded_amount if hasattr(s, 'funded_amount') else 0
             }
             
             # If user is a volunteer, include their roster entry status
@@ -364,7 +369,7 @@ def checkin_shift(shift_id):
 @bp.route('/<int:shift_id>/checkout', methods=['POST'])
 @jwt_required()
 def checkout_shift(shift_id):
-    """Check out from a shift"""
+    """Check out from a shift - payment comes from pre-funded shift budget"""
     try:
         from app.models import ShiftRoster, GlobalRules, TransactionLog
         from datetime import datetime
@@ -399,7 +404,6 @@ def checkout_shift(shift_id):
         
         roster_entry.check_out_time = datetime.utcnow()
         roster_entry.beneficiaries_served = beneficiaries_served
-        roster_entry.status = 'completed'
         
         # Calculate payment
         time_diff = roster_entry.check_out_time - roster_entry.check_in_time
@@ -411,18 +415,65 @@ def checkout_shift(shift_id):
         
         base_payment = hours_worked * base_rate
         beneficiary_bonus = beneficiaries_served * bonus_per_beneficiary
-        total_amount = base_payment + beneficiary_bonus
+        total_amount = round(base_payment + beneficiary_bonus, 2)
+        
+        # Check if shift is funded and has enough budget
+        is_funded = getattr(shift, 'is_funded', False)
+        funded_amount = getattr(shift, 'funded_amount', 0) or 0
+        
+        payment_status = 'pending'
+        payment_message = ''
+        
+        if is_funded and funded_amount >= total_amount:
+            # Deduct from shift budget and mark as paid
+            shift.funded_amount = funded_amount - total_amount
+            if shift.funded_amount <= 0:
+                shift.is_funded = False
+            
+            roster_entry.is_paid = True
+            roster_entry.paid_at = datetime.utcnow()
+            payment_status = 'completed'
+            payment_message = 'Payment processed from organization funds!'
+        elif is_funded and funded_amount > 0:
+            # Partial payment - pay what's available
+            partial_amount = funded_amount
+            shift.funded_amount = 0
+            shift.is_funded = False
+            total_amount = partial_amount
+            
+            roster_entry.is_paid = True
+            roster_entry.paid_at = datetime.utcnow()
+            payment_status = 'partial'
+            payment_message = f'Partial payment of KES {partial_amount} processed (shift budget exhausted)'
+        else:
+            # No funding available
+            payment_status = 'pending'
+            payment_message = 'Shift not funded - payment pending organization funding'
         
         roster_entry.payout_amount = total_amount
+        roster_entry.status = 'completed'
+        
+        # Create transaction log if paid
+        if payment_status in ['completed', 'partial']:
+            transaction = TransactionLog(
+                volunteer_id=user_id,
+                shift_roster_id=roster_entry.id,
+                amount=total_amount,
+                status='completed',
+                phone=user.mpesa_phone or user.phone or 'N/A'
+            )
+            db.session.add(transaction)
         
         db.session.commit()
         
         return jsonify({
-            'message': 'Checked out successfully',
+            'message': f'Checked out successfully! {payment_message}',
             'check_out_time': roster_entry.check_out_time.isoformat(),
             'hours_worked': round(hours_worked, 2),
             'beneficiaries_served': beneficiaries_served,
-            'payout_amount': round(total_amount, 2)
+            'payout_amount': total_amount,
+            'payment_status': payment_status,
+            'shift_remaining_budget': getattr(shift, 'funded_amount', 0) or 0
         }), 200
         
     except Exception as e:
