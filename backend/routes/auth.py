@@ -96,7 +96,7 @@ def login():
         
         # Generate JWT token with user info
         access_token = create_access_token(
-            identity=user.id,
+            identity=str(user.id),  # Convert to string for JWT compatibility
             additional_claims={
                 "email": user.email,
                 "role": user.role
@@ -127,7 +127,7 @@ def get_current_user():
     Requires: Authorization: Bearer <token>
     """
     try:
-        user_id = get_jwt_identity()
+        user_id = int(get_jwt_identity())
         user = User.query.get(user_id)
         
         if not user:
@@ -158,7 +158,7 @@ def check_auth():
     Requires: Authorization: Bearer <token>
     """
     try:
-        user_id = get_jwt_identity()
+        user_id = int(get_jwt_identity())
         user = User.query.get(user_id)
         
         if not user:

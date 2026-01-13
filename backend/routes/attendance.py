@@ -33,7 +33,7 @@ def check_in():
     """
     Check in to a shift with geofence validation
     """
-    user_id = get_jwt_identity()
+    user_id = int(get_jwt_identity())
     user = User.query.get(user_id)
     
     if user.role != 'volunteer':
@@ -109,7 +109,7 @@ def check_out():
     """
     Check out from a shift
     """
-    user_id = get_jwt_identity()
+    user_id = int(get_jwt_identity())
     user = User.query.get(user_id)
     
     if user.role != 'volunteer':
@@ -195,7 +195,7 @@ def get_shift_attendance(shift_id):
     """
     Get attendance records for a specific shift (org admins only)
     """
-    user_id = get_jwt_identity()
+    user_id = int(get_jwt_identity())
     user = User.query.get(user_id)
     
     if user.role not in ['org_admin', 'admin']:

@@ -14,7 +14,7 @@ bp = Blueprint('shifts', __name__)
 def create_shift():
     """Create a new shift"""
     try:
-        user_id = get_jwt_identity()
+        user_id = int(get_jwt_identity())
         user = User.query.get(user_id)
         
         if user.role not in ['org_admin', 'admin']:
@@ -76,7 +76,7 @@ def create_shift():
 def get_shifts():
     """Get all shifts - optionally filtered by project_id"""
     try:
-        user_id = get_jwt_identity()
+        user_id = int(get_jwt_identity())
         user = User.query.get(user_id)
         
         project_id = request.args.get('project_id', type=int)
