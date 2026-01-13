@@ -24,18 +24,6 @@ def create_app():
                  "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
                  "allow_headers": ["Content-Type", "Authorization"],
                  "supports_credentials": True
-             },
-             r"/admin/*": {
-                 "origins": [
-                     "https://volaplace.vercel.app",
-                     "http://localhost:5173",
-                     "http://localhost:5174",
-                     "http://localhost:3000",
-                     r"https://volaplace-.*\.vercel\.app"
-                 ],
-                 "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-                 "allow_headers": ["Content-Type", "Authorization"],
-                 "supports_credentials": True
              }
          })
 
@@ -92,7 +80,7 @@ def create_app():
     from routes.payments import bp as payments_bp
     
     app.register_blueprint(api_bp)
-    app.register_blueprint(admin_bp)
+    app.register_blueprint(admin_bp, url_prefix='/api/admin')  # Admin routes under /api/admin
     app.register_blueprint(auth_bp, url_prefix='/api/auth')  # Auth routes under /api/auth
     app.register_blueprint(users_bp, url_prefix='/api/users')
     app.register_blueprint(orgs_bp, url_prefix='/api/organizations')

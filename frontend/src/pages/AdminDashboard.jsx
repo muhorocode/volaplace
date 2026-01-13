@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import axios from 'axios';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
 export default function AdminDashboard() {
   const { token } = useAuth();
@@ -29,9 +29,9 @@ export default function AdminDashboard() {
 
       // Fetch all admin data
       const [statsRes, rulesRes, transactionsRes] = await Promise.all([
-        axios.get(`${API_URL}/admin/dashboard-stats`, { headers }),
-        axios.get(`${API_URL}/admin/global-rules`, { headers }),
-        axios.get(`${API_URL}/admin/transactions?per_page=20`, { headers })
+        axios.get(`${API_URL}/api/admin/dashboard-stats`, { headers }),
+        axios.get(`${API_URL}/api/admin/global-rules`, { headers }),
+        axios.get(`${API_URL}/api/admin/transactions?per_page=20`, { headers })
       ]);
 
       setStats(statsRes.data.summary);
@@ -55,7 +55,7 @@ export default function AdminDashboard() {
 
     try {
       const response = await axios.put(
-        `${API_URL}/admin/global-rules`,
+        `${API_URL}/api/admin/global-rules`,
         formData,
         { headers: { Authorization: `Bearer ${token}` } }
       );

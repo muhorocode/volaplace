@@ -1,7 +1,8 @@
 """
 Attendance routes for VolaPlace - Check-in/Check-out with geofencing
 """
-from flask import Blueprint, jsonify, request, session
+from flask import Blueprint, jsonify, request
+from flask_jwt_extended import jwt_required, get_jwt_identity
 from app import db
 from app.models import ShiftRoster, Shift, Project, User
 from datetime import datetime
@@ -27,14 +28,12 @@ def calculate_distance(lat1, lon1, lat2, lon2):
     return distance
 
 @bp.route('/check-in', methods=['POST'])
+@jwt_required()
 def check_in():
     """
     Check in to a shift with geofence validation
     """
-    if 'user_id' not in session:
-        return jsonify({'error': 'Not authenticated'}), 401
-    
-    user_id = session['user_id']
+    user_id = get_jwt_identity()
     user = User.query.get(user_id)
     
     if user.role != 'volunteer':
@@ -105,14 +104,12 @@ def check_in():
     }), 200
 
 @bp.route('/check-out', methods=['POST'])
+@jwt_required()
 def check_out():
     """
-    Check out from a shift with geofence validation
+    Check out from a shift
     """
-    if 'user_id' not in session:
-        return jsonify({'error': 'Not authenticated'}), 401
-    
-    user_id = session['user_id']
+    user_id = get_jwt_identity()
     user = User.query.get(user_id)
     
     if user.role != 'volunteer':
@@ -193,14 +190,13 @@ def check_out():
     }), 200
 
 @bp.route('/shift/<int:shift_id>', methods=['GET'])
+@jwt_required()
 def get_shift_attendance(shift_id):
     """
     Get attendance records for a specific shift (org admins only)
     """
-    if 'user_id' not in session:
-        return jsonify({'error': 'Not authenticated'}), 401
-    
-    user = User.query.get(session['user_id'])
+    user_id = get_jwt_identity()
+    user = User.query.get(user_id)
     
     if user.role not in ['org_admin', 'admin']:
         return jsonify({'error': 'Unauthorized'}), 403

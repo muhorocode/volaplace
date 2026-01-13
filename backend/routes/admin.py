@@ -14,7 +14,7 @@ def admin_required():
         return jsonify({"error": "Admin access required"}), 403
     return None
 
-@admin_bp.route('/admin/dashboard-stats', methods=['GET'])
+@admin_bp.route('/dashboard-stats', methods=['GET'])
 @jwt_required()
 def get_dashboard_analytics():
     """Get platform-wide analytics for admin dashboard"""
@@ -53,7 +53,7 @@ def get_dashboard_analytics():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-@admin_bp.route('/admin/global-rules', methods=['GET'])
+@admin_bp.route('/global-rules', methods=['GET'])
 @jwt_required()
 def get_global_rules():
     """Get current global payout rules"""
@@ -76,7 +76,7 @@ def get_global_rules():
         }
     }), 200
 
-@admin_bp.route('/admin/global-rules', methods=['PUT'])
+@admin_bp.route('/global-rules', methods=['PUT'])
 @jwt_required()
 def update_global_rules():
     """Update global payout rules (admin only)"""
@@ -124,7 +124,7 @@ def update_global_rules():
         }
     }), 200
 
-@admin_bp.route('/admin/transactions', methods=['GET'])
+@admin_bp.route('/transactions', methods=['GET'])
 @jwt_required()
 def get_all_transactions():
     """Get all payment transactions for reconciliation"""

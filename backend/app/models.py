@@ -93,6 +93,7 @@ class Shift(db.Model, SerializerMixin):
     id = db.Column(db.Integer, primary_key=True)
     project_id = db.Column(db.Integer, db.ForeignKey('projects.id', ondelete='CASCADE'), nullable=False)
     title = db.Column(db.String(100), nullable=False)
+    description = db.Column(db.Text)
     date = db.Column(db.Date, nullable=False)
     start_time = db.Column(db.Time, nullable=False)
     end_time = db.Column(db.Time, nullable=False)
@@ -108,6 +109,7 @@ class Shift(db.Model, SerializerMixin):
         return {
             "id": self.id,
             "title": self.title,
+            "description": self.description,
             "date": self.date.isoformat() if self.date else None,
             "start_time": self.start_time.strftime("%H:%M") if self.start_time else None,
             "end_time": self.end_time.strftime("%H:%M") if self.end_time else None,
