@@ -1,7 +1,8 @@
 """
 Payments routes for VolaPlace - M-Pesa integration
 """
-from flask import Blueprint, jsonify, request, session
+from flask import Blueprint, jsonify, request
+from flask_jwt_extended import jwt_required, get_jwt_identity
 from app import db
 from app.models import TransactionLog, ShiftRoster, User, GlobalRules
 from utils.mpesa import mpesa
@@ -9,12 +10,12 @@ from utils.mpesa import mpesa
 bp = Blueprint('payments', __name__)
 
 @bp.route('/calculate', methods=['POST'])
+@jwt_required()
 def calculate_payment():
     """
     Calculate payment for a completed shift
     """
-    if 'user_id' not in session:
-        return jsonify({'error': 'Not authenticated'}), 401
+    user_id = get_jwt_identity()
     
     data = request.get_json()
     shift_roster_id = data.get('shift_roster_id')
@@ -64,14 +65,12 @@ def calculate_payment():
     }), 200
 
 @bp.route('/initiate', methods=['POST'])
+@jwt_required()
 def initiate_payment():
     """
     Initiate M-Pesa STK Push payment
     """
-    if 'user_id' not in session:
-        return jsonify({'error': 'Not authenticated'}), 401
-    
-    user_id = session['user_id']
+    user_id = get_jwt_identity()
     user = User.query.get(user_id)
     
     data = request.get_json()
@@ -182,14 +181,12 @@ def mpesa_callback():
         return jsonify({'message': 'Callback received'}), 200
 
 @bp.route('/pending', methods=['GET'])
+@jwt_required()
 def get_pending_payments():
     """
     Get pending payments for current user
     """
-    if 'user_id' not in session:
-        return jsonify({'error': 'Not authenticated'}), 401
-    
-    user_id = session['user_id']
+    user_id = get_jwt_identity()
     
     # Get pending transactions
     transactions = TransactionLog.query.filter_by(
@@ -210,14 +207,12 @@ def get_pending_payments():
     }), 200
 
 @bp.route('/history', methods=['GET'])
+@jwt_required()
 def get_payment_history():
     """
     Get payment history for current user
     """
-    if 'user_id' not in session:
-        return jsonify({'error': 'Not authenticated'}), 401
-    
-    user_id = session['user_id']
+    user_id = get_jwt_identity()
     
     # Get all transactions
     transactions = TransactionLog.query.filter_by(volunteer_id=user_id).all()
