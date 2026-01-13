@@ -76,6 +76,7 @@ def create_shift():
 def get_shifts():
     """Get all shifts - optionally filtered by project_id"""
     try:
+        from datetime import datetime as dt, timedelta
         user_id = int(get_jwt_identity())
         user = User.query.get(user_id)
         
@@ -96,23 +97,63 @@ def get_shifts():
         
         shifts = query.order_by(Shift.date.desc()).all()
         
-        return jsonify([{
-            'id': s.id,
-            'title': s.title,
-            'description': s.description,
-            'date': s.date.isoformat() if s.date else None,
-            'start_time': s.start_time.isoformat() if s.start_time else None,
-            'end_time': s.end_time.isoformat() if s.end_time else None,
-            'max_volunteers': s.max_volunteers,
-            'status': s.status,
-            'project_id': s.project_id,
-            'project': {
-                'name': s.project.name,
-                'lat': s.project.lat,
-                'lon': s.project.lon,
-                'geofence_radius': s.project.geofence_radius
-            } if s.project else None
-        } for s in shifts]), 200
+        # Auto-update shift status based on current time
+        now = dt.now()
+        for s in shifts:
+            if s.date and s.start_time:
+                # Combine date and time
+                shift_datetime = dt.combine(s.date, s.start_time)
+                # Add 1 minute buffer
+                start_threshold = shift_datetime + timedelta(minutes=1)
+                
+                if s.status == 'upcoming' and now >= start_threshold:
+                    s.status = 'in_progress'
+                    db.session.add(s)
+        
+        db.session.commit()
+        
+        # For volunteers, include their roster entry status
+        result = []
+        for s in shifts:
+            shift_data = {
+                'id': s.id,
+                'title': s.title,
+                'description': s.description,
+                'date': s.date.isoformat() if s.date else None,
+                'start_time': s.start_time.isoformat() if s.start_time else None,
+                'end_time': s.end_time.isoformat() if s.end_time else None,
+                'max_volunteers': s.max_volunteers,
+                'status': s.status,
+                'project_id': s.project_id,
+                'project': {
+                    'name': s.project.name,
+                    'lat': s.project.lat,
+                    'lon': s.project.lon,
+                    'geofence_radius': s.project.geofence_radius
+                } if s.project else None,
+                'volunteers_signed_up': len(s.roster_entries) if s.roster_entries else 0
+            }
+            
+            # If user is a volunteer, include their roster entry status
+            if user.role == 'volunteer':
+                from app.models import ShiftRoster
+                roster_entry = ShiftRoster.query.filter_by(
+                    shift_id=s.id,
+                    volunteer_id=user_id
+                ).first()
+                
+                if roster_entry:
+                    shift_data['roster_status'] = roster_entry.status
+                    shift_data['check_in_time'] = roster_entry.check_in_time.isoformat() if roster_entry.check_in_time else None
+                    shift_data['check_out_time'] = roster_entry.check_out_time.isoformat() if roster_entry.check_out_time else None
+                    shift_data['payout_amount'] = roster_entry.payout_amount
+                    shift_data['beneficiaries_served'] = roster_entry.beneficiaries_served
+                    # Override shift status with roster status for volunteer's view
+                    shift_data['status'] = roster_entry.status
+            
+            result.append(shift_data)
+        
+        return jsonify(result), 200
         
     except Exception as e:
         return jsonify({'error': str(e)}), 500
@@ -303,6 +344,11 @@ def checkin_shift(shift_id):
         
         roster_entry.check_in_time = datetime.utcnow()
         roster_entry.status = 'checked_in'
+        
+        # Update shift status to in_progress when first volunteer checks in
+        if shift.status == 'upcoming':
+            shift.status = 'in_progress'
+        
         db.session.commit()
         
         return jsonify({

@@ -194,9 +194,12 @@ const MyShifts = () => {
   };
 
   const filteredShifts = shifts.filter(shift => {
+    // Only show shifts the volunteer has registered for
+    if (!shift.roster_status) return false;
+    
     switch (activeTab) {
       case 'upcoming':
-        return shift.status === 'upcoming';
+        return shift.status === 'upcoming' || shift.status === 'registered' || shift.status === 'checked_in';
       case 'completed':
         return shift.status === 'completed';
       case 'pending':
