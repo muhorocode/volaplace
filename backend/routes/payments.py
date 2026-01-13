@@ -15,7 +15,7 @@ def calculate_payment():
     """
     Calculate payment for a completed shift
     """
-    user_id = get_jwt_identity()
+    user_id = int(get_jwt_identity())
     
     data = request.get_json()
     shift_roster_id = data.get('shift_roster_id')
@@ -70,7 +70,7 @@ def initiate_payment():
     """
     Initiate M-Pesa STK Push payment
     """
-    user_id = get_jwt_identity()
+    user_id = int(get_jwt_identity())
     user = User.query.get(user_id)
     
     data = request.get_json()
@@ -186,7 +186,7 @@ def get_pending_payments():
     """
     Get pending payments for current user
     """
-    user_id = get_jwt_identity()
+    user_id = int(get_jwt_identity())
     
     # Get pending transactions
     transactions = TransactionLog.query.filter_by(
@@ -212,7 +212,7 @@ def get_payment_history():
     """
     Get payment history for current user
     """
-    user_id = get_jwt_identity()
+    user_id = int(get_jwt_identity())
     
     # Get all transactions
     transactions = TransactionLog.query.filter_by(volunteer_id=user_id).all()

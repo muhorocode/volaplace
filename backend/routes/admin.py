@@ -8,7 +8,7 @@ admin_bp = Blueprint('admin', __name__)
 
 def admin_required():
     """Decorator to check if user is admin"""
-    user_id = get_jwt_identity()
+    user_id = int(get_jwt_identity())  # Convert string to int
     user = User.query.get(user_id)
     if not user or user.role != 'admin':
         return jsonify({"error": "Admin access required"}), 403
@@ -85,7 +85,7 @@ def update_global_rules():
         return error_response
     
     data = request.get_json()
-    user_id = get_jwt_identity()
+    user_id = int(get_jwt_identity())  # Convert string to int
     
     if not data:
         return jsonify({"error": "No data provided"}), 400
