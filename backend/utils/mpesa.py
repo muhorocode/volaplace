@@ -25,33 +25,79 @@ class MPesa:
     def get_access_token(self):
         """Get OAuth access token from M-Pesa"""
         try:
+            # DIAGNOSTIC: Log credential prefixes (safe)
+            print(f"🔍 MPESA_CONSUMER_KEY (first 4): {self.consumer_key[:4] if self.consumer_key else 'MISSING'}")
+            print(f"🔍 MPESA_CONSUMER_SECRET (first 4): {self.consumer_secret[:4] if self.consumer_secret else 'MISSING'}")
+            print(f"🔍 Full key length: {len(self.consumer_key)}, secret length: {len(self.consumer_secret)}")
+            
+            # DIAGNOSTIC: Verify credentials exist
+            if not self.consumer_key or not self.consumer_secret:
+                print("❌ ERROR: Consumer key or secret is empty!")
+                return None
+            
             # Create base64 encoded credentials
             credentials = f"{self.consumer_key}:{self.consumer_secret}"
-            encoded_credentials = base64.b64encode(credentials.encode()).decode()
+            
+            # DIAGNOSTIC: Ensure proper encoding (Linux compatibility)
+            # Explicitly encode to UTF-8 bytes, then base64 encode
+            credentials_bytes = credentials.encode('utf-8')
+            encoded_credentials = base64.b64encode(credentials_bytes).decode('utf-8')
+            
+            # DIAGNOSTIC: Log base64 encoding info
+            print(f"🔍 Base64 encoded length: {len(encoded_credentials)}")
+            print(f"🔍 Base64 first 8 chars: {encoded_credentials[:8]}")
             
             headers = {
                 'Authorization': f'Basic {encoded_credentials}'
             }
             
+            print(f"🔍 Requesting token from: {self.auth_url}")
             response = requests.get(self.auth_url, headers=headers)
             
-            if response.status_code != 200:
-                print(f"M-Pesa Auth Failed: {response.status_code} - {response.text}")
+            # DIAGNOSTIC: Log exact response details
+            print(f"📡 Auth Response Status: {response.status_code}")
+            print(f"📡 Auth Response Headers: {dict(response.headers)}")
+            print(f"📡 Auth Response Body: {response.text}")
             
-            response.raise_for_status()
+            if response.status_code != 200:
+                print(f"❌ M-Pesa Auth Failed: {response.status_code}")
+                print(f"❌ Full response: {response.text}")
+                return None
             
             result = response.json()
-            return result.get('access_token')
+            access_token = result.get('access_token')
+            
+            if access_token:
+                print(f"✅ Access token obtained (first 8): {access_token[:8]}...")
+            else:
+                print(f"❌ No access_token in response: {result}")
+            
+            return access_token
             
         except Exception as e:
-            print(f"M-Pesa auth error: {str(e)}")
+            print(f"❌ M-Pesa auth exception: {type(e).__name__}: {str(e)}")
+            import traceback
+            print(f"📚 Traceback: {traceback.format_exc()}")
             return None
     
     def generate_password(self):
         """Generate password for STK Push"""
         timestamp = datetime.now().strftime('%Y%m%d%H%M%S')
+        
+        # DIAGNOSTIC: Log passkey info
+        print(f"🔍 MPESA_PASSKEY (first 4): {self.passkey[:4] if self.passkey else 'MISSING'}")
+        print(f"🔍 Passkey length: {len(self.passkey)}")
+        print(f"🔍 Shortcode: {self.business_shortcode}")
+        print(f"🔍 Timestamp: {timestamp}")
+        
         data_to_encode = f"{self.business_shortcode}{self.passkey}{timestamp}"
-        encoded = base64.b64encode(data_to_encode.encode()).decode()
+        
+        # DIAGNOSTIC: Ensure proper encoding (Linux compatibility)
+        data_bytes = data_to_encode.encode('utf-8')
+        encoded = base64.b64encode(data_bytes).decode('utf-8')
+        
+        print(f"🔍 Password generated (first 8): {encoded[:8]}...")
+        
         return encoded, timestamp
     
     def stk_push(self, phone_number, amount, account_reference, transaction_desc):
