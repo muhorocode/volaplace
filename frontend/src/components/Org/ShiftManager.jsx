@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import toast from 'react-hot-toast';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
@@ -17,6 +18,14 @@ const ShiftManager = ({ projects }) => {
     bonus_per_beneficiary: 50
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [editingShift, setEditingShift] = useState(null);
+  const [showEditModal, setShowEditModal] = useState(false);
+  
+  // Fund shift state
+  const [showFundModal, setShowFundModal] = useState(false);
+  const [fundingShift, setFundingShift] = useState(null);
+  const [fundAmount, setFundAmount] = useState(5000);
+  const [isFunding, setIsFunding] = useState(false);
 
   useEffect(() => {
     if (projects.length > 0 && !formData.project_id) {
@@ -43,6 +52,115 @@ const ShiftManager = ({ projects }) => {
     }
   };
 
+  const handleEditShift = (shift) => {
+    setEditingShift({
+      id: shift.id,
+      title: shift.title,
+      description: shift.description || '',
+      shift_date: shift.shift_date,
+      start_time: shift.start_time,
+      end_time: shift.end_time,
+      required_volunteers: shift.required_volunteers,
+      base_stipend: shift.base_stipend || 500,
+      bonus_per_beneficiary: shift.bonus_per_beneficiary || 50
+    });
+    setShowEditModal(true);
+  };
+
+  const handleUpdateShift = async (e) => {
+    e.preventDefault();
+    setIsSubmitting(true);
+    
+    try {
+      const token = localStorage.getItem('token');
+      const response = await axios.put(
+        `${API_URL}/api/shifts/${editingShift.id}`,
+        editingShift,
+        {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        }
+      );
+      
+      if (response.status === 200) {
+        toast.success('Shift updated successfully!');
+        setShowEditModal(false);
+        setEditingShift(null);
+        fetchShifts();
+      }
+    } catch (err) {
+      toast.error(err.response?.data?.error || 'Failed to update shift');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleDeleteShift = async (shiftId) => {
+    if (!window.confirm('Are you sure you want to delete this shift?')) return;
+    
+    try {
+      const token = localStorage.getItem('token');
+      const response = await axios.delete(
+        `${API_URL}/api/shifts/${shiftId}`,
+        {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        }
+      );
+      
+      if (response.status === 200) {
+        toast.success('Shift deleted successfully!');
+        fetchShifts();
+      }
+    } catch (err) {
+      toast.error(err.response?.data?.error || 'Failed to delete shift');
+    }
+  };
+
+  // Fund shift handlers
+  const handleOpenFundModal = (shift) => {
+    setFundingShift(shift);
+    setFundAmount(5000);
+    setShowFundModal(true);
+  };
+
+  const handleFundShift = async (useDemo = false) => {
+    if (!fundingShift) return;
+    setIsFunding(true);
+    
+    try {
+      const token = localStorage.getItem('token');
+      const endpoint = useDemo ? '/api/payments/fund-shift-demo' : '/api/payments/fund-shift';
+      
+      const response = await axios.post(
+        `${API_URL}${endpoint}`,
+        {
+          shift_id: fundingShift.id,
+          amount: fundAmount
+        },
+        {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        }
+      );
+      
+      if (response.data.message) {
+        toast.success(response.data.message);
+        setShowFundModal(false);
+        setFundingShift(null);
+        fetchShifts();
+      }
+    } catch (err) {
+      console.error('Fund error:', err);
+      toast.error(err.response?.data?.error || 'Failed to fund shift');
+    } finally {
+      setIsFunding(false);
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setIsSubmitting(true);
@@ -60,7 +178,7 @@ const ShiftManager = ({ projects }) => {
       );
       
       if (response.status === 201 || response.status === 200) {
-        alert('Shift created successfully!');
+        toast.success('Shift created successfully!');
         setFormData({
           title: '',
           description: '',
@@ -76,7 +194,7 @@ const ShiftManager = ({ projects }) => {
       }
     } catch (err) {
       console.error('Error creating shift:', err);
-      alert('Failed to create shift');
+      toast.error(err.response?.data?.error || 'Failed to create shift');
     } finally {
       setIsSubmitting(false);
     }
@@ -242,6 +360,7 @@ const ShiftManager = ({ projects }) => {
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Title</th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date & Time</th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Volunteers</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Funding</th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
                 </tr>
@@ -258,6 +377,17 @@ const ShiftManager = ({ projects }) => {
                       {shift.volunteers_signed_up}/{shift.required_volunteers}
                     </td>
                     <td className="px-4 py-3">
+                      {shift.is_funded ? (
+                        <span className="px-2 py-1 text-xs rounded-full bg-green-100 text-green-800">
+                          KES {(shift.funded_amount || 0).toLocaleString()}
+                        </span>
+                      ) : (
+                        <span className="px-2 py-1 text-xs rounded-full bg-yellow-100 text-yellow-800">
+                          Not Funded
+                        </span>
+                      )}
+                    </td>
+                    <td className="px-4 py-3">
                       <span className={`px-2 py-1 text-xs rounded-full ${
                         shift.status === 'active' ? 'bg-green-100 text-green-800' :
                         shift.status === 'completed' ? 'bg-blue-100 text-blue-800' :
@@ -266,12 +396,24 @@ const ShiftManager = ({ projects }) => {
                         {shift.status}
                       </span>
                     </td>
-                    <td className="px-4 py-3 text-sm">
-                      <button className="text-blue-600 hover:text-blue-800 mr-3">
-                        View Roster
+                    <td className="px-4 py-3 text-sm space-x-2">
+                      <button 
+                        onClick={() => handleOpenFundModal(shift)}
+                        className="text-green-600 hover:text-green-800 font-medium"
+                      >
+                        Fund
                       </button>
-                      <button className="text-red-600 hover:text-red-800">
-                        Cancel
+                      <button 
+                        onClick={() => handleEditShift(shift)}
+                        className="text-blue-600 hover:text-blue-800"
+                      >
+                        Edit
+                      </button>
+                      <button 
+                        onClick={() => handleDeleteShift(shift.id)}
+                        className="text-red-600 hover:text-red-800"
+                      >
+                        Delete
                       </button>
                     </td>
                   </tr>
@@ -281,6 +423,207 @@ const ShiftManager = ({ projects }) => {
           </div>
         )}
       </div>
+
+      {/* Edit Shift Modal */}
+      {showEditModal && editingShift && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-xl font-bold text-gray-800">Edit Shift</h3>
+              <button 
+                onClick={() => setShowEditModal(false)}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                ✕
+              </button>
+            </div>
+            
+            <form onSubmit={handleUpdateShift} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Title</label>
+                <input
+                  type="text"
+                  value={editingShift.title}
+                  onChange={(e) => setEditingShift({...editingShift, title: e.target.value})}
+                  required
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+                <textarea
+                  value={editingShift.description}
+                  onChange={(e) => setEditingShift({...editingShift, description: e.target.value})}
+                  rows={2}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                />
+              </div>
+              
+              <div className="grid grid-cols-3 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Date</label>
+                  <input
+                    type="date"
+                    value={editingShift.shift_date}
+                    onChange={(e) => setEditingShift({...editingShift, shift_date: e.target.value})}
+                    required
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Start Time</label>
+                  <input
+                    type="time"
+                    value={editingShift.start_time}
+                    onChange={(e) => setEditingShift({...editingShift, start_time: e.target.value})}
+                    required
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">End Time</label>
+                  <input
+                    type="time"
+                    value={editingShift.end_time}
+                    onChange={(e) => setEditingShift({...editingShift, end_time: e.target.value})}
+                    required
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                  />
+                </div>
+              </div>
+              
+              <div className="grid grid-cols-3 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Volunteers Needed</label>
+                  <input
+                    type="number"
+                    min="1"
+                    value={editingShift.required_volunteers}
+                    onChange={(e) => setEditingShift({...editingShift, required_volunteers: parseInt(e.target.value)})}
+                    required
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Base Stipend (KES)</label>
+                  <input
+                    type="number"
+                    min="0"
+                    value={editingShift.base_stipend}
+                    onChange={(e) => setEditingShift({...editingShift, base_stipend: parseInt(e.target.value)})}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Bonus/Beneficiary</label>
+                  <input
+                    type="number"
+                    min="0"
+                    value={editingShift.bonus_per_beneficiary}
+                    onChange={(e) => setEditingShift({...editingShift, bonus_per_beneficiary: parseInt(e.target.value)})}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                  />
+                </div>
+              </div>
+              
+              <div className="flex space-x-3 pt-4">
+                <button
+                  type="button"
+                  onClick={() => setShowEditModal(false)}
+                  className="flex-1 px-4 py-2 border border-gray-300 rounded-md hover:bg-gray-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSubmitting}
+                  className="flex-1 bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 disabled:opacity-50"
+                >
+                  {isSubmitting ? 'Saving...' : 'Save Changes'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Fund Shift Modal */}
+      {showFundModal && fundingShift && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-md">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-xl font-bold text-gray-800">Fund Shift</h3>
+              <button 
+                onClick={() => setShowFundModal(false)}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                ✕
+              </button>
+            </div>
+            
+            <div className="mb-4 p-3 bg-gray-50 rounded-md">
+              <p className="font-medium text-gray-800">{fundingShift.title}</p>
+              <p className="text-sm text-gray-500">
+                {new Date(fundingShift.shift_date).toLocaleDateString()} • {fundingShift.start_time} - {fundingShift.end_time}
+              </p>
+              {fundingShift.is_funded && (
+                <p className="text-sm text-green-600 mt-1">
+                  Current Budget: KES {(fundingShift.funded_amount || 0).toLocaleString()}
+                </p>
+              )}
+            </div>
+            
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Amount to Add (KES)
+              </label>
+              <input
+                type="number"
+                min="100"
+                step="100"
+                value={fundAmount}
+                onChange={(e) => setFundAmount(parseInt(e.target.value) || 0)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                placeholder="Enter amount"
+              />
+              <p className="text-xs text-gray-500 mt-1">
+                Minimum: KES 100. This amount will be added to the shift budget to pay volunteers.
+              </p>
+            </div>
+            
+            <div className="bg-blue-50 p-3 rounded-md mb-4">
+              <p className="text-sm text-blue-800">
+                <strong>How it works:</strong> You'll receive an M-Pesa prompt on your phone to deposit funds. Once confirmed, volunteers can receive payments from this shift's budget when they check out.
+              </p>
+            </div>
+            
+            <div className="flex flex-col space-y-3">
+              <button
+                onClick={() => handleFundShift(false)}
+                disabled={isFunding || fundAmount < 100}
+                className="w-full bg-green-600 text-white py-2 px-4 rounded-md hover:bg-green-700 disabled:opacity-50"
+              >
+                {isFunding ? 'Processing...' : `Fund with M-Pesa (KES ${fundAmount.toLocaleString()})`}
+              </button>
+              <button
+                onClick={() => handleFundShift(true)}
+                disabled={isFunding || fundAmount < 100}
+                className="w-full bg-gray-600 text-white py-2 px-4 rounded-md hover:bg-gray-700 disabled:opacity-50"
+              >
+                {isFunding ? 'Processing...' : 'Demo Mode (Skip M-Pesa)'}
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowFundModal(false)}
+                className="w-full px-4 py-2 border border-gray-300 rounded-md hover:bg-gray-50"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

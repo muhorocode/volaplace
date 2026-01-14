@@ -99,6 +99,11 @@ class Shift(db.Model, SerializerMixin):
     end_time = db.Column(db.Time, nullable=False)
     max_volunteers = db.Column(db.Integer)
     status = db.Column(db.String(20), default='pending') # pending, active, completed
+    
+    # Funding fields for pre-funded wallet model
+    is_funded = db.Column(db.Boolean, default=False)
+    funded_amount = db.Column(db.Float, default=0.0)
+    funding_transaction_id = db.Column(db.String(100))  # M-Pesa transaction reference
 
     project = db.relationship('Project', back_populates='shifts')
     roster = db.relationship('ShiftRoster', back_populates='shift', cascade='all, delete-orphan')
@@ -135,6 +140,11 @@ class ShiftRoster(db.Model, SerializerMixin):
     check_out_time = db.Column(db.DateTime)
     beneficiaries_served = db.Column(db.Integer, default=0)
     status = db.Column(db.String(20), default='scheduled') # scheduled, checked_in, completed, cancelled
+    
+    # Payment tracking
+    payout_amount = db.Column(db.Float, default=0.0)
+    is_paid = db.Column(db.Boolean, default=False)
+    paid_at = db.Column(db.DateTime)
 
     shift = db.relationship('Shift', back_populates='roster')
     volunteer = db.relationship('User', back_populates='volunteer_shifts')
