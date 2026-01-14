@@ -62,8 +62,9 @@ def fund_shift():
     
     # Get admin's phone for STK Push
     phone = user.mpesa_phone or user.phone
+    
     if not phone:
-        return jsonify({'error': 'No phone number configured for M-Pesa'}), 400
+        return jsonify({'error': 'No phone number configured for M-Pesa. Please update your profile with a valid phone number.'}), 400
     
     # Initiate M-Pesa STK Push to the ADMIN (not volunteer!)
     result = mpesa.stk_push(
@@ -75,7 +76,6 @@ def fund_shift():
     
     if result['success']:
         # Store pending transaction - will be confirmed via callback
-        # For now, we'll simulate immediate success for demo purposes
         shift.funded_amount = (shift.funded_amount or 0) + amount
         shift.is_funded = True
         shift.funding_transaction_id = result.get('checkout_request_id', f"DEMO-{datetime.utcnow().timestamp()}")
@@ -93,7 +93,8 @@ def fund_shift():
     else:
         return jsonify({
             'error': 'Failed to initiate funding',
-            'details': result.get('error')
+            'details': result.get('error'),
+            'error_code': result.get('error_code', 'N/A')
         }), 500
 
 
