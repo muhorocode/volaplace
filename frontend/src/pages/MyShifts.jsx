@@ -1,14 +1,21 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
+import toast, { Toaster } from 'react-hot-toast';
 import { useAuth } from '../contexts/AuthContext';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
 const MyShifts = () => {
   const [shifts, setShifts] = useState([]);
+  const [availableShifts, setAvailableShifts] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState('upcoming'); // 'upcoming', 'completed', 'pending'
+  const [activeTab, setActiveTab] = useState('upcoming'); // 'upcoming', 'available', 'completed', 'pending'
+  const [selectedShift, setSelectedShift] = useState(null);
+  const [showCheckoutModal, setShowCheckoutModal] = useState(false);
+  const [checkoutShiftId, setCheckoutShiftId] = useState(null);
+  const [beneficiariesCount, setBeneficiariesCount] = useState('');
+  const [showShiftDetails, setShowShiftDetails] = useState(null);
   const [stats, setStats] = useState({
     totalEarned: 0,
     totalHours: 0,
@@ -25,6 +32,7 @@ const MyShifts = () => {
     }
     
     fetchMyShifts();
+    fetchAvailableShifts();
   }, [navigate, user]);
 
   const fetchMyShifts = async () => {
@@ -48,6 +56,27 @@ const MyShifts = () => {
       }
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchAvailableShifts = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      
+      // Get available shifts for signup
+      const response = await axios.get(`${API_URL}/api/shifts`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      
+      // Filter to only upcoming shifts with spots available
+      const available = (response.data || []).filter(
+        s => s.status === 'upcoming' && (s.volunteers_signed_up || 0) < s.max_volunteers
+      );
+      setAvailableShifts(available);
+    } catch (err) {
+      console.error('Error fetching available shifts:', err);
     }
   };
 
@@ -93,27 +122,32 @@ const MyShifts = () => {
       );
       
       if (response.status === 200) {
-        alert('Checked in successfully!');
+        toast.success('Checked in successfully!');
         fetchMyShifts();
       }
     } catch (err) {
-      alert(err.response?.data?.error || 'Failed to check in');
+      toast.error(err.response?.data?.error || 'Failed to check in');
       console.error('Error checking in:', err);
     }
   };
 
-  const handleCheckOut = async (shiftId) => {
-    const beneficiaries = prompt('How many beneficiaries did you serve?');
-    if (!beneficiaries || isNaN(beneficiaries)) {
-      alert('Please enter a valid number');
+  const openCheckoutModal = (shiftId) => {
+    setCheckoutShiftId(shiftId);
+    setBeneficiariesCount('');
+    setShowCheckoutModal(true);
+  };
+
+  const handleCheckOut = async () => {
+    if (!beneficiariesCount || isNaN(beneficiariesCount) || parseInt(beneficiariesCount) < 0) {
+      toast.error('Please enter a valid number of beneficiaries');
       return;
     }
 
     try {
       const token = localStorage.getItem('token');
       const response = await axios.post(
-        `${API_URL}/api/shifts/${shiftId}/checkout`,
-        { beneficiaries_served: parseInt(beneficiaries) },
+        `${API_URL}/api/shifts/${checkoutShiftId}/checkout`,
+        { beneficiaries_served: parseInt(beneficiariesCount) },
         {
           headers: {
             'Authorization': `Bearer ${token}`
@@ -122,19 +156,59 @@ const MyShifts = () => {
       );
       
       if (response.status === 200) {
-        alert('Checked out successfully! Payment has been processed.');
+        const { message, payout_amount, payment_status } = response.data;
+        
+        if (payment_status === 'completed') {
+          toast.success(`${message} You earned KES ${payout_amount}!`);
+        } else if (payment_status === 'partial') {
+          toast.success(message);
+        } else {
+          toast.success(`Checked out! Earned KES ${payout_amount}. ${message}`);
+        }
+        
+        setShowCheckoutModal(false);
+        setCheckoutShiftId(null);
+        setBeneficiariesCount('');
         fetchMyShifts();
       }
     } catch (err) {
-      alert(err.response?.data?.error || 'Failed to check out');
+      toast.error(err.response?.data?.error || 'Failed to check out');
       console.error('Error checking out:', err);
     }
   };
 
+  const handleRegisterForShift = async (shiftId) => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await axios.post(
+        `${API_URL}/api/shifts/${shiftId}/register`,
+        {},
+        {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        }
+      );
+      
+      if (response.status === 200 || response.status === 201) {
+        toast.success('Successfully registered for shift!');
+        fetchMyShifts();
+        fetchAvailableShifts();
+        setActiveTab('upcoming');
+      }
+    } catch (err) {
+      toast.error(err.response?.data?.error || 'Failed to register for shift');
+      console.error('Error registering:', err);
+    }
+  };
+
   const filteredShifts = shifts.filter(shift => {
+    // Only show shifts the volunteer has registered for
+    if (!shift.roster_status) return false;
+    
     switch (activeTab) {
       case 'upcoming':
-        return shift.status === 'upcoming';
+        return shift.status === 'upcoming' || shift.status === 'registered' || shift.status === 'checked_in';
       case 'completed':
         return shift.status === 'completed';
       case 'pending':
@@ -154,6 +228,7 @@ const MyShifts = () => {
 
   return (
     <div className="min-h-screen bg-gray-50">
+      <Toaster position="top-right" />
       {/* Header */}
       <header className="bg-white shadow">
         <div className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
@@ -221,6 +296,16 @@ const MyShifts = () => {
                 Upcoming
               </button>
               <button
+                onClick={() => setActiveTab('available')}
+                className={`py-4 px-6 text-center border-b-2 font-medium text-sm ${
+                  activeTab === 'available'
+                    ? 'border-green-500 text-green-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                }`}
+              >
+                Available ({availableShifts.length})
+              </button>
+              <button
                 onClick={() => setActiveTab('completed')}
                 className={`py-4 px-6 text-center border-b-2 font-medium text-sm ${
                   activeTab === 'completed'
@@ -244,7 +329,52 @@ const MyShifts = () => {
           </div>
         </div>
 
+        {/* Available Shifts Section */}
+        {activeTab === 'available' && (
+          <div className="bg-white shadow overflow-hidden sm:rounded-md">
+            {availableShifts.length === 0 ? (
+              <div className="text-center py-12">
+                <p className="text-gray-500">No available shifts at the moment.</p>
+              </div>
+            ) : (
+              <ul className="divide-y divide-gray-200">
+                {availableShifts.map((shift) => (
+                  <li key={shift.id} className="px-6 py-4 hover:bg-gray-50">
+                    <div className="flex items-center justify-between">
+                      <div className="flex-1">
+                        <h3 className="text-lg font-medium text-gray-900">{shift.title}</h3>
+                        <p className="text-sm text-gray-600 mt-1">{shift.description}</p>
+                        <div className="mt-2 flex flex-wrap gap-4 text-sm text-gray-500">
+                          <span>📅 {new Date(shift.date).toLocaleDateString()}</span>
+                          <span>🕐 {shift.start_time} - {shift.end_time}</span>
+                          <span>📍 {shift.project?.name || 'Location TBD'}</span>
+                          <span>👥 {shift.volunteers_signed_up || 0}/{shift.max_volunteers} volunteers</span>
+                        </div>
+                      </div>
+                      <div className="ml-4 flex flex-col space-y-2">
+                        <button
+                          onClick={() => setShowShiftDetails(shift)}
+                          className="px-4 py-2 bg-gray-100 text-gray-700 text-sm rounded hover:bg-gray-200"
+                        >
+                          View Details
+                        </button>
+                        <button
+                          onClick={() => handleRegisterForShift(shift.id)}
+                          className="px-4 py-2 bg-green-600 text-white text-sm rounded hover:bg-green-700"
+                        >
+                          Register
+                        </button>
+                      </div>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        )}
+
         {/* Shifts List */}
+        {activeTab !== 'available' && (
         <div className="bg-white shadow overflow-hidden sm:rounded-md">
           {filteredShifts.length === 0 ? (
             <div className="text-center py-12">
@@ -253,7 +383,7 @@ const MyShifts = () => {
               </p>
               {activeTab === 'upcoming' && (
                 <button
-                  onClick={() => navigate('/')}
+                  onClick={() => setActiveTab('available')}
                   className="mt-4 inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700"
                 >
                   Find Volunteer Opportunities
@@ -324,7 +454,7 @@ const MyShifts = () => {
                             Check In
                           </button>
                           <button
-                            onClick={() => navigate(`/shift/${shift.id}/details`)}
+                            onClick={() => setShowShiftDetails(shift)}
                             className="px-4 py-2 bg-blue-600 text-white text-sm rounded hover:bg-blue-700"
                           >
                             View Details
@@ -334,7 +464,7 @@ const MyShifts = () => {
                       
                       {shift.status === 'checked_in' && (
                         <button
-                          onClick={() => handleCheckOut(shift.id)}
+                          onClick={() => openCheckoutModal(shift.id)}
                           className="px-4 py-2 bg-red-600 text-white text-sm rounded hover:bg-red-700"
                         >
                           Check Out
@@ -343,10 +473,10 @@ const MyShifts = () => {
                       
                       {shift.status === 'completed' && (
                         <button
-                          onClick={() => navigate(`/shift/${shift.id}/receipt`)}
+                          onClick={() => setShowShiftDetails(shift)}
                           className="px-4 py-2 bg-gray-600 text-white text-sm rounded hover:bg-gray-700"
                         >
-                          View Receipt
+                          View Details
                         </button>
                       )}
                       
@@ -362,6 +492,7 @@ const MyShifts = () => {
             </ul>
           )}
         </div>
+        )}
 
         {/* Payment History */}
         {activeTab === 'completed' && filteredShifts.length > 0 && (
@@ -420,6 +551,104 @@ const MyShifts = () => {
                   ))}
                 </tbody>
               </table>
+            </div>
+          </div>
+        )}
+
+        {/* Checkout Modal */}
+        {showCheckoutModal && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-md">
+              <h3 className="text-xl font-bold text-gray-800 mb-4">Check Out</h3>
+              <p className="text-gray-600 mb-4">How many beneficiaries did you serve during this shift?</p>
+              <input
+                type="number"
+                min="0"
+                value={beneficiariesCount}
+                onChange={(e) => setBeneficiariesCount(e.target.value)}
+                placeholder="Enter number of beneficiaries"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md mb-4"
+              />
+              <div className="flex space-x-3">
+                <button
+                  onClick={() => setShowCheckoutModal(false)}
+                  className="flex-1 px-4 py-2 border border-gray-300 rounded-md hover:bg-gray-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleCheckOut}
+                  className="flex-1 bg-green-600 text-white py-2 px-4 rounded-md hover:bg-green-700"
+                >
+                  Complete Checkout
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Shift Details Modal */}
+        {showShiftDetails && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-lg">
+              <div className="flex justify-between items-start mb-4">
+                <h3 className="text-xl font-bold text-gray-800">{showShiftDetails.title}</h3>
+                <button 
+                  onClick={() => setShowShiftDetails(null)}
+                  className="text-gray-500 hover:text-gray-700 text-xl"
+                >
+                  ✕
+                </button>
+              </div>
+              
+              <div className="space-y-3">
+                <p className="text-gray-600">{showShiftDetails.description || 'No description available'}</p>
+                
+                <div className="grid grid-cols-2 gap-4 text-sm">
+                  <div>
+                    <span className="font-medium text-gray-700">Date:</span>
+                    <p>{new Date(showShiftDetails.date).toLocaleDateString()}</p>
+                  </div>
+                  <div>
+                    <span className="font-medium text-gray-700">Time:</span>
+                    <p>{showShiftDetails.start_time} - {showShiftDetails.end_time}</p>
+                  </div>
+                  <div>
+                    <span className="font-medium text-gray-700">Location:</span>
+                    <p>{showShiftDetails.project?.name || 'TBD'}</p>
+                  </div>
+                  <div>
+                    <span className="font-medium text-gray-700">Volunteers:</span>
+                    <p>{showShiftDetails.volunteers_signed_up || 0}/{showShiftDetails.max_volunteers}</p>
+                  </div>
+                </div>
+                
+                {showShiftDetails.project && (
+                  <div className="mt-4 p-3 bg-gray-50 rounded-md">
+                    <p className="text-sm text-gray-600">
+                      📍 Coordinates: {showShiftDetails.project.lat?.toFixed(4)}, {showShiftDetails.project.lon?.toFixed(4)}
+                    </p>
+                  </div>
+                )}
+              </div>
+              
+              <div className="flex space-x-3 mt-6">
+                <button
+                  onClick={() => setShowShiftDetails(null)}
+                  className="flex-1 px-4 py-2 border border-gray-300 rounded-md hover:bg-gray-50"
+                >
+                  Close
+                </button>
+                <button
+                  onClick={() => {
+                    handleRegisterForShift(showShiftDetails.id);
+                    setShowShiftDetails(null);
+                  }}
+                  className="flex-1 bg-green-600 text-white py-2 px-4 rounded-md hover:bg-green-700"
+                >
+                  Register for Shift
+                </button>
+              </div>
             </div>
           </div>
         )}

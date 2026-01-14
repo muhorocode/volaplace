@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
+import toast, { Toaster } from 'react-hot-toast';
 import { useAuth } from '../contexts/AuthContext';
 import CreateProject from '../components/Org/CreateProject';
 import ShiftManager from '../components/Org/ShiftManager';
@@ -11,6 +12,9 @@ const OrgDashboard = () => {
   const [projects, setProjects] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('projects');
+  const [selectedProject, setSelectedProject] = useState(null);
+  const [projectShifts, setProjectShifts] = useState([]);
+  const [shiftsLoading, setShiftsLoading] = useState(false);
   const navigate = useNavigate();
   const { user } = useAuth();
 
@@ -47,6 +51,8 @@ const OrgDashboard = () => {
 
   const handleProjectCreated = (newProject) => {
     setProjects(prev => [...prev, newProject]);
+    setActiveTab('projects'); // Navigate to Project Locations tab
+    toast.success('Project location created successfully!');
   };
 
   const handleDeleteProject = async (projectId) => {
@@ -62,12 +68,40 @@ const OrgDashboard = () => {
           }
         );
         setProjects(prev => prev.filter(p => p.id !== projectId));
-        alert('Project deleted successfully');
+        toast.success('Project deleted successfully');
       } catch (err) {
         console.error('Error deleting project:', err);
-        alert('Failed to delete project');
+        toast.error(err.response?.data?.error || 'Failed to delete project');
       }
     }
+  };
+
+  const handleViewShifts = async (project) => {
+    setSelectedProject(project);
+    setShiftsLoading(true);
+    try {
+      const token = localStorage.getItem('token');
+      const url = `${API_URL}/api/shifts?project_id=${project.id}`;
+      const response = await axios.get(
+        url,
+        {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        }
+      );
+      setProjectShifts(response.data || []);
+    } catch (err) {
+      toast.error('Failed to load shifts');
+      setProjectShifts([]);
+    } finally {
+      setShiftsLoading(false);
+    }
+  };
+
+  const closeShiftsModal = () => {
+    setSelectedProject(null);
+    setProjectShifts([]);
   };
 
   if (loading) {
@@ -80,6 +114,7 @@ const OrgDashboard = () => {
 
   return (
     <div className="min-h-screen bg-gray-50">
+      <Toaster position="top-right" />
       {/* Header */}
       <header className="bg-white shadow">
         <div className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
@@ -167,12 +202,12 @@ const OrgDashboard = () => {
                         </div>
                       </div>
                       <div className="ml-4 flex space-x-2">
-                        <Link
-                          to={`/project/${project.id}/shifts`}
+                        <button
+                          onClick={() => handleViewShifts(project)}
                           className="inline-flex items-center px-3 py-1 border border-transparent text-sm leading-4 font-medium rounded-md text-blue-700 bg-blue-100 hover:bg-blue-200"
                         >
                           View Shifts
-                        </Link>
+                        </button>
                         <button
                           onClick={() => handleDeleteProject(project.id)}
                           className="inline-flex items-center px-3 py-1 border border-transparent text-sm leading-4 font-medium rounded-md text-red-700 bg-red-100 hover:bg-red-200"
@@ -196,6 +231,96 @@ const OrgDashboard = () => {
           <ShiftManager projects={projects} />
         )}
       </main>
+
+      {/* View Shifts Modal */}
+      {selectedProject && (
+        <div className="fixed inset-0 bg-black bg-opacity-30 backdrop-blur-sm flex items-center justify-center z-50">
+          <div className="bg-white bg-opacity-95 rounded-lg shadow-2xl w-full max-w-3xl max-h-[80vh] overflow-hidden">
+            <div className="px-6 py-4 border-b bg-gray-50 flex justify-between items-center">
+              <div>
+                <h3 className="text-xl font-bold text-gray-800">
+                  Shifts for {selectedProject.name}
+                </h3>
+                <p className="text-sm text-gray-500">
+                  🆔 Project ID: {selectedProject.id} | 📍 {selectedProject.lat?.toFixed(4)}, {selectedProject.lon?.toFixed(4)}
+                </p>
+              </div>
+              <button 
+                onClick={closeShiftsModal}
+                className="text-gray-500 hover:text-gray-700 text-2xl"
+              >
+                ✕
+              </button>
+            </div>
+            
+            <div className="p-6 overflow-y-auto max-h-[60vh]">
+              {shiftsLoading ? (
+                <div className="text-center py-8">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+                  <p className="mt-2 text-gray-500">Loading shifts...</p>
+                </div>
+              ) : projectShifts.length === 0 ? (
+                <div className="text-center py-8">
+                  <p className="text-gray-500">No shifts created for this project yet.</p>
+                  <button
+                    onClick={() => {
+                      closeShiftsModal();
+                      setActiveTab('shifts');
+                    }}
+                    className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+                  >
+                    Create a Shift
+                  </button>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {projectShifts.map(shift => (
+                    <div key={shift.id} className="border rounded-lg p-4 hover:bg-gray-50">
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <h4 className="font-semibold text-gray-900">{shift.title}</h4>
+                          <p className="text-sm text-gray-600 mt-1">{shift.description || 'No description'}</p>
+                          <div className="mt-2 flex flex-wrap gap-3 text-sm text-gray-500">
+                            <span>🆔 Shift ID: {shift.id} | Project ID: {shift.project_id}</span>
+                            <span>📅 {shift.date ? new Date(shift.date).toLocaleDateString() : 'TBD'}</span>
+                            <span>🕐 {shift.start_time} - {shift.end_time}</span>
+                            <span>👥 {shift.volunteers_signed_up || 0}/{shift.max_volunteers} volunteers</span>
+                            <span className={`px-2 py-0.5 rounded-full text-xs ${
+                              shift.status === 'upcoming' ? 'bg-green-100 text-green-800' :
+                              shift.status === 'completed' ? 'bg-blue-100 text-blue-800' :
+                              'bg-gray-100 text-gray-800'
+                            }`}>
+                              {shift.status}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+            
+            <div className="px-6 py-4 border-t bg-gray-50 flex justify-end space-x-3">
+              <button
+                onClick={closeShiftsModal}
+                className="px-4 py-2 border border-gray-300 rounded-md hover:bg-gray-100"
+              >
+                Close
+              </button>
+              <button
+                onClick={() => {
+                  closeShiftsModal();
+                  setActiveTab('shifts');
+                }}
+                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+              >
+                Manage All Shifts
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
