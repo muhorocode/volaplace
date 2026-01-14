@@ -35,10 +35,8 @@ class MPesa:
             
             response = requests.get(self.auth_url, headers=headers)
             
-            # Print detailed error for debugging
             if response.status_code != 200:
-                print(f"M-Pesa Auth Response Status: {response.status_code}")
-                print(f"M-Pesa Auth Response: {response.text}")
+                print(f"M-Pesa Auth Failed: {response.status_code} - {response.text}")
             
             response.raise_for_status()
             
@@ -79,7 +77,7 @@ class MPesa:
             password, timestamp = self.generate_password()
             
             # Format phone number (remove + and spaces)
-            phone_number = phone_number.replace('+', '').replace(' ', '')
+            phone_number = phone_number.replace('+', '').replace(' ', '').replace('-', '')
             if not phone_number.startswith('254'):
                 phone_number = '254' + phone_number.lstrip('0')
             
@@ -93,7 +91,7 @@ class MPesa:
                 'BusinessShortCode': self.business_shortcode,
                 'Password': password,
                 'Timestamp': timestamp,
-                'TransactionType': 'CustomerPayBill',
+                'TransactionType': 'CustomerPayBillOnline',
                 'Amount': int(amount),
                 'PartyA': phone_number,
                 'PartyB': self.business_shortcode,
@@ -122,9 +120,11 @@ class MPesa:
                     'message': result.get('CustomerMessage', 'STK Push sent successfully')
                 }
             else:
+                print(f"M-Pesa STK Push failed: {result.get('errorMessage', 'Unknown error')}")
                 return {
                     'success': False,
-                    'error': result.get('errorMessage', 'STK Push failed')
+                    'error': result.get('errorMessage', 'STK Push failed'),
+                    'error_code': result.get('errorCode', 'N/A')
                 }
                 
         except requests.exceptions.RequestException as e:

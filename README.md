@@ -10,36 +10,30 @@
 - [Our Solution](#-our-solution)
 - [Key Features](#-key-features)
 - [Technology Stack](#-technology-stack)
-- [System Architecture](#-system-architecture)
+- [Recent Updates](#-recent-updates)
 - [Getting Started](#-getting-started)
-- [User Roles & Access](#-user-roles--access)
-- [API Documentation](#-api-documentation)
-- [Database Schema](#-database-schema)
 - [Deployment Guide](#-deployment-guide)
-- [Team & Workflow](#-team--workflow)
 
 ---
 
 ## 🎯 Project Overview
 
-**VolaPlace** is a comprehensive geo-verified volunteer marketplace that connects three key stakeholders in the community service ecosystem:
+**VolaPlace** is a comprehensive geo-verified volunteer marketplace that connects organizations with volunteers through real-time geolocation, interactive maps, and integrated M-Pesa payments for seamless volunteer management and compensation.
 
-1. **🏢 Organizations** - Post volunteer opportunities and manage shifts
-2. **👥 Volunteers** - Discover nearby opportunities, check-in on-site, and earn rewards
-3. **⚙️ Administrators** - Monitor platform activity, manage payout rules, and generate impact reports
-
-Our platform leverages **real-time geolocation**, **interactive maps**, and **automated M-Pesa payments** to create a transparent, efficient volunteer management system.
+### Core Stakeholders:
+1. **🏢 Organizations** - Post volunteer opportunities, manage shifts, and fund volunteer payments
+2. **👥 Volunteers** - Discover nearby opportunities, check-in with geolocation, and receive payments
+3. **⚙️ Administrators** - Monitor platform activity, manage payout rules, and oversee operations
 
 ---
 
 ## 🚨 The Problem We're Solving
 
 Community service faces critical challenges:
-
-- **Fragmentation**: Organizations lack a centralized platform to manage volunteer activities
+- **Fragmentation**: Organizations lack centralized volunteer management systems
 - **Verification Issues**: No reliable way to confirm volunteers are physically on-site
 - **Payment Delays**: Manual reimbursement processes are slow and error-prone
-- **Discovery Gap**: Volunteers struggle to find relevant opportunities near them
+- **Discovery Gap**: Volunteers struggle to find relevant opportunities nearby
 - **Impact Tracking**: Organizations can't easily measure beneficiary reach and outcomes
 
 ---
@@ -54,53 +48,62 @@ VolaPlace addresses these challenges through:
 - **Location-Aware Search**: Users can search based on their current GPS location or a custom address
 
 ### ✅ Geo-Verified Attendance
-- **Geofence Technology**: Volunteers must be within 20 meters of the shift location to check-in
+- **Geofence Technology**: Volunteers must be within 20 meters of shift locations to check-in
 - **Dual Verification**: Both check-in and check-out are geo-verified for accuracy
-- **Beneficiary Tracking**: Volunteers log the number of people served during their shift
+- **Real-time Tracking**: Track volunteer attendance and location compliance
 
-### 💰 Algorithmic Automated Payments
-Our platform calculates stipends using a transparent formula:
-
-```
-Stipend = (Base Hourly Rate × Hours Worked) + (Bonus per Beneficiary × Beneficiaries Served)
-```
-
-Payments are instantly disbursed via **M-Pesa B2C API** upon successful check-out.
+### 💰 M-Pesa Payment Integration
+- **Organization Funding**: Organizations fund shifts via M-Pesa STK Push
+- **Volunteer Payments**: Automated compensation upon shift completion
+- **Transaction Tracking**: Complete payment history and reconciliation
+- **Secure Processing**: Integrated with Safaricom Daraja API (sandbox for testing)
 
 ### 📊 Real-Time Impact Reporting
-- Total volunteer hours tracked
-- Beneficiaries served aggregated across all shifts
-- Payment reconciliation dashboard
-- Organization performance metrics
+- Total volunteer hours tracked across the platform
+- Shift completion and attendance monitoring
+- Organization and volunteer performance metrics
+- Comprehensive dashboard for administrators
 
 ---
 
 ## ✨ Key Features
 
 ### For Volunteers
-- ✅ Browse volunteer opportunities on an interactive map
+- ✅ Browse volunteer opportunities on interactive maps
 - ✅ Filter shifts by distance, date, and organization
-- ✅ Sign up for shifts with one click
-- ✅ GPS-verified check-in/check-out
-- ✅ Automatic M-Pesa payment upon shift completion
-- ✅ View shift history and total earnings
-- ✅ Track personal impact (hours, beneficiaries served)
+- ✅ GPS-verified check-in/check-out within geofenced areas
+- ✅ View shift history and track personal impact
+- ✅ Real-time shift availability updates
 
 ### For Organizations
-- ✅ Create and manage project locations with geofence radii
-- ✅ Post volunteer shifts with requirements and schedules
-- ✅ View volunteer roster in real-time
-- ✅ Monitor check-in/check-out status
+- ✅ Create projects with geofenced locations
+- ✅ Post and manage volunteer shifts
+- ✅ Fund shifts via M-Pesa STK Push integration
+- ✅ Monitor volunteer attendance in real-time
 - ✅ Access shift completion reports
-- ✅ Configure payout parameters
 
 ### For Administrators
-- ✅ Manage global payout rules (hourly rates, bonuses)
-- ✅ Audit all platform transactions
-- ✅ View comprehensive impact reports
-- ✅ Manage organizations and project locations
-- ✅ Reconcile M-Pesa payment statuses
-- ✅ Platform-wide analytics dashboard
+- ✅ Platform-wide oversight and analytics
+- ✅ Manage organizations and projects
+- ✅ Monitor all transactions and payments
+- ✅ Comprehensive reporting dashboard
+
+---
+
+## 🔧 Recent Updates
+
+### M-Pesa Integration (January 2026)
+- ✅ Implemented M-Pesa STK Push for organization shift funding
+- ✅ Fixed transaction type from `CustomerPayBill` to `CustomerPayBillOnline`
+- ✅ Added comprehensive error handling and logging
+- ✅ Integrated with Safaricom Daraja API sandbox
+- ✅ Tested and verified payment flow end-to-end
+
+### Code Quality Improvements
+- ✅ Cleaned up unnecessary console logs
+- ✅ Improved error messages for better debugging
+- ✅ Enhanced M-Pesa callback handling
+- ✅ Optimized payment route validation
 
 ---
 
