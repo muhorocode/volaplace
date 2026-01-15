@@ -72,16 +72,19 @@ VolaPlace addresses these challenges through:
 - ✅ **Interactive Map Discovery** - Browse volunteer opportunities on Leaflet maps with real-time updates
 - ✅ **Smart Filtering** - Filter shifts by distance, date, organization, and project
 - ✅ **GPS Check-In/Out** - Geo-verified attendance within 20m geofenced areas
-- ✅ **Automatic Payments** - Receive instant payments upon shift completion
-- ✅ **Personal Dashboard** - Track total earnings, hours worked, and beneficiaries served
-- ✅ **Shift Status Tracking** - View upcoming, available, completed, and pending payment shifts
-- ✅ **Mobile Optimized** - Fully responsive design for on-the-go access
+- ✅ **Complete Workflow Tracking** - Register → Check In → In Progress → Check Out → Pending Payment → Admin Approval → Completed
+- ✅ **Persistent State Management** - Shift status survives page refresh and logout/login via localStorage
+- ✅ **Personal Dashboard** - Track total earnings, hours worked, and beneficiaries served with real-time stats
+- ✅ **Shift Status Tabs** - Available, In Progress, Pending Payment, and Completed tabs with accurate filtering
+- ✅ **Mobile Optimized** - Fully responsive design with touch-friendly controls for on-the-go access
 
 ### For Organizations
 - ✅ **Project Management** - Create projects with custom geofenced locations
 - ✅ **Shift Creation** - Post volunteer shifts with hourly rates and bonus structures
 - ✅ **M-Pesa Funding** - Fund shifts via STK Push with real-time confirmation
 - ✅ **Demo Mode Backup** - Alternative funding when M-Pesa has service issues
+- ✅ **Payment Approval System** - Review and approve volunteer payments after work completion
+- ✅ **Budget Management** - Automatic budget deduction when approving payments
 - ✅ **Volunteer Monitoring** - Track registrations, check-ins, and attendance in real-time
 - ✅ **Payment Transparency** - View all funding and disbursement transactions
 - ✅ **Dashboard Analytics** - Monitor active shifts, volunteer counts, and funding status
@@ -96,6 +99,16 @@ VolaPlace addresses these challenges through:
 ---
 
 ## 🔧 Recent Updates
+
+### Volunteer Workflow with localStorage Persistence (January 2026) ✅
+- **Complete Workflow**: Register → Check In → Check Out → Pending Payment → Admin Approval → Completed
+- **localStorage Persistence**: Shift states persist across page refresh and logout/login
+- **Admin Payment Approval**: Admins approve volunteer payments before marking as completed
+- **Budget Deduction**: Organization budget automatically reduces when admin approves payments
+- **Robust State Management**: Shifts remain in correct tabs (Available, In Progress, Pending Payment, Completed) even after refresh
+- **Optimistic UI Updates**: Instant button state changes with no flickering
+- **Enhanced Map**: Full-width interactive map with color-coded markers (RED=user location, GREEN=active shifts, BLUE=upcoming shifts)
+- **Mobile Responsive**: Footer positioning fixed, improved mobile navigation and layout
 
 ### M-Pesa Payment Integration (January 2026) ✅
 - ✅ **Live M-Pesa STK Push** - Organizations fund shifts via real M-Pesa payments
@@ -223,16 +236,17 @@ Once shift is funded:
 
 #### 3️⃣ **Geo-Verified Check-In**
 On shift day, volunteer must be physically present:
-- Volunteer navigates to "Upcoming" tab
+- Volunteer navigates to "In Progress" tab
 - Clicks "Check In" button
 - System captures GPS coordinates
 - Haversine algorithm validates volunteer is within 20m of shift location
-- If valid: `checked_in=True`, `check_in_time` recorded
+- If valid: `checked_in=True`, `check_in_time` recorded, status saved to localStorage
 - If outside geofence: Error message displayed
+- Shift moves to "In Progress" tab and persists there even after page refresh
 
 #### 4️⃣ **Work Completion & Check-Out**
 After completing volunteer work:
-- Volunteer clicks "Check Out" in "Upcoming" tab
+- Volunteer clicks "Check Out" in "In Progress" tab
 - Modal prompts for "Beneficiaries Served" count
 - System calculates payment:
   ```
@@ -241,11 +255,23 @@ After completing volunteer work:
   Bonus = Beneficiaries Served × Per-Beneficiary Rate (from shift)
   Total Payment = Base Payment + Bonus
   ```
-- Payment automatically deducted from shift's funded amount
-- Volunteer receives instant payment confirmation
-- Shift moves to "Completed" tab with payment details
+- Shift moves to "Pending Payment" tab with `is_paid=false`
+- Status saved to localStorage - persists across refresh/logout
+- Volunteer sees "Payment Pending Admin Approval" message
 
-#### 5️⃣ **Payment Records & Tracking**
+#### 5️⃣ **Admin Payment Approval**
+Organization admins review and approve payments:
+- Admin views list of volunteers with pending payments
+- Reviews work completion and beneficiaries served
+- Clicks "Approve Payment" for each volunteer
+- System:
+  - Deducts payment from organization budget
+  - Marks volunteer's roster entry as `is_paid=true`
+  - Records transaction in payment history
+- Volunteer's shift moves to "Completed" tab on next login/refresh
+- Payment amount displayed in volunteer's history
+
+#### 6️⃣ **Payment Records & Tracking**
 All transactions logged in `TransactionLog` table:
 - Organization funding transactions
 - Volunteer payment disbursements
