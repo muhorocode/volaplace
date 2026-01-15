@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import toast, { Toaster } from 'react-hot-toast';
 import { useAuth } from '../contexts/AuthContext';
+import ProfileUpdate from '../components/ProfileUpdate';
+import Footer from '../components/Footer';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
@@ -70,9 +72,15 @@ const MyShifts = () => {
         }
       });
       
-      // Filter to only upcoming shifts with spots available
+      // Filter to show:
+      // 1. Shifts not registered by user with spots available
+      // 2. Shifts registered by user but not yet checked in
       const available = (response.data || []).filter(
-        s => s.status === 'upcoming' && (s.volunteers_signed_up || 0) < s.max_volunteers
+        s => {
+          const isAvailableShift = s.status === 'upcoming' && (s.volunteers_signed_up || 0) < s.max_volunteers && !s.roster_status;
+          const isRegisteredNotCheckedIn = s.roster_status === 'registered';
+          return isAvailableShift || isRegisteredNotCheckedIn;
+        }
       );
       setAvailableShifts(available);
     } catch (err) {
@@ -208,11 +216,17 @@ const MyShifts = () => {
     
     switch (activeTab) {
       case 'upcoming':
-        return shift.status === 'upcoming' || shift.status === 'registered' || shift.status === 'checked_in';
-      case 'completed':
-        return shift.status === 'completed';
+        // Show only registered status (not checked in yet)
+        return shift.roster_status === 'registered';
+      case 'inprogress':
+        // Show checked_in status shifts
+        return shift.roster_status === 'checked_in';
       case 'pending':
-        return shift.status === 'pending_payment';
+        // Show checked out but payment pending admin approval
+        return shift.roster_status === 'pending_payment' || (shift.check_out_time && !shift.is_paid);
+      case 'completed':
+        // Show completed and paid shifts
+        return shift.roster_status === 'completed' || (shift.check_out_time && shift.is_paid);
       default:
         return true;
     }
@@ -227,21 +241,21 @@ const MyShifts = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 flex flex-col">
       <Toaster position="top-right" />
       {/* Header */}
       <header className="bg-white shadow">
-        <div className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
-          <h1 className="text-3xl font-bold text-gray-900">
+        <div className="max-w-7xl mx-auto py-4 sm:py-6 px-4 sm:px-6 lg:px-8">
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">
             My Volunteer Shifts
           </h1>
-          <p className="text-gray-600 mt-2">
+          <p className="text-sm sm:text-base text-gray-600 mt-2">
             Track your volunteering journey and earnings
           </p>
         </div>
       </header>
 
-      <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
+      <main className="flex-1 max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
         {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
           <div className="bg-gradient-to-r from-green-500 to-green-600 text-white rounded-lg shadow-md p-6">
@@ -282,12 +296,12 @@ const MyShifts = () => {
         </div>
 
         {/* Tabs */}
-        <div className="mb-6 bg-white rounded-lg shadow">
+        <div className="mb-6 bg-white rounded-lg shadow overflow-x-auto">
           <div className="border-b border-gray-200">
-            <nav className="-mb-px flex">
+            <nav className="-mb-px flex min-w-max">
               <button
                 onClick={() => setActiveTab('upcoming')}
-                className={`py-4 px-6 text-center border-b-2 font-medium text-sm ${
+                className={`py-3 sm:py-4 px-4 sm:px-6 text-center border-b-2 font-medium text-xs sm:text-sm whitespace-nowrap ${
                   activeTab === 'upcoming'
                     ? 'border-blue-500 text-blue-600'
                     : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
@@ -297,7 +311,7 @@ const MyShifts = () => {
               </button>
               <button
                 onClick={() => setActiveTab('available')}
-                className={`py-4 px-6 text-center border-b-2 font-medium text-sm ${
+                className={`py-3 sm:py-4 px-4 sm:px-6 text-center border-b-2 font-medium text-xs sm:text-sm whitespace-nowrap ${
                   activeTab === 'available'
                     ? 'border-green-500 text-green-600'
                     : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
@@ -307,7 +321,7 @@ const MyShifts = () => {
               </button>
               <button
                 onClick={() => setActiveTab('completed')}
-                className={`py-4 px-6 text-center border-b-2 font-medium text-sm ${
+                className={`py-3 sm:py-4 px-4 sm:px-6 text-center border-b-2 font-medium text-xs sm:text-sm whitespace-nowrap ${
                   activeTab === 'completed'
                     ? 'border-blue-500 text-blue-600'
                     : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
@@ -317,7 +331,7 @@ const MyShifts = () => {
               </button>
               <button
                 onClick={() => setActiveTab('pending')}
-                className={`py-4 px-6 text-center border-b-2 font-medium text-sm ${
+                className={`py-3 sm:py-4 px-4 sm:px-6 text-center border-b-2 font-medium text-xs sm:text-sm whitespace-nowrap ${
                   activeTab === 'pending'
                     ? 'border-blue-500 text-blue-600'
                     : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
@@ -325,9 +339,24 @@ const MyShifts = () => {
               >
                 Pending Payment
               </button>
+              <button
+                onClick={() => setActiveTab('profile')}
+                className={`py-3 sm:py-4 px-4 sm:px-6 text-center border-b-2 font-medium text-xs sm:text-sm whitespace-nowrap ${
+                  activeTab === 'profile'
+                    ? 'border-blue-500 text-blue-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                }`}
+              >
+                Profile
+              </button>
             </nav>
           </div>
         </div>
+
+        {/* Profile Tab */}
+        {activeTab === 'profile' && (
+          <ProfileUpdate />
+        )}
 
         {/* Available Shifts Section */}
         {activeTab === 'available' && (
@@ -339,31 +368,61 @@ const MyShifts = () => {
             ) : (
               <ul className="divide-y divide-gray-200">
                 {availableShifts.map((shift) => (
-                  <li key={shift.id} className="px-6 py-4 hover:bg-gray-50">
-                    <div className="flex items-center justify-between">
+                  <li key={shift.id} className="px-4 sm:px-6 py-4 hover:bg-gray-50">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
                       <div className="flex-1">
-                        <h3 className="text-lg font-medium text-gray-900">{shift.title}</h3>
-                        <p className="text-sm text-gray-600 mt-1">{shift.description}</p>
-                        <div className="mt-2 flex flex-wrap gap-4 text-sm text-gray-500">
+                        <div className="flex items-center gap-2">
+                          <h3 className="text-base sm:text-lg font-medium text-gray-900">{shift.title}</h3>
+                          {shift.is_funded && (
+                            <span className="px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full">
+                              ✓ Funded
+                            </span>
+                          )}
+                          {!shift.is_funded && (
+                            <span className="px-2 py-1 bg-red-100 text-red-800 text-xs rounded-full">
+                              Not Funded
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-xs sm:text-sm text-gray-600 mt-1">{shift.description}</p>
+                        <div className="mt-2 flex flex-wrap gap-2 sm:gap-4 text-xs sm:text-sm text-gray-500">
                           <span>📅 {new Date(shift.date).toLocaleDateString()}</span>
                           <span>🕐 {shift.start_time} - {shift.end_time}</span>
                           <span>📍 {shift.project?.name || 'Location TBD'}</span>
                           <span>👥 {shift.volunteers_signed_up || 0}/{shift.max_volunteers} volunteers</span>
+                          {shift.is_funded && shift.funded_amount > 0 && (
+                            <span className="text-green-600 font-semibold">💰 KES {shift.funded_amount.toLocaleString()} budget</span>
+                          )}
                         </div>
                       </div>
-                      <div className="ml-4 flex flex-col space-y-2">
+                      <div className="flex sm:flex-col space-x-2 sm:space-x-0 sm:space-y-2">
                         <button
                           onClick={() => setShowShiftDetails(shift)}
-                          className="px-4 py-2 bg-gray-100 text-gray-700 text-sm rounded hover:bg-gray-200"
+                          className="flex-1 sm:flex-none px-3 sm:px-4 py-2 bg-gray-100 text-gray-700 text-xs sm:text-sm rounded hover:bg-gray-200"
                         >
                           View Details
                         </button>
-                        <button
-                          onClick={() => handleRegisterForShift(shift.id)}
-                          className="px-4 py-2 bg-green-600 text-white text-sm rounded hover:bg-green-700"
-                        >
-                          Register
-                        </button>
+                        {shift.roster_status === 'registered' ? (
+                          <button
+                            onClick={() => handleCheckIn(shift.id)}
+                            className="flex-1 sm:flex-none px-3 sm:px-4 py-2 bg-blue-600 text-white text-xs sm:text-sm rounded hover:bg-blue-700"
+                          >
+                            Check In
+                          </button>
+                        ) : (
+                          <button
+                            onClick={() => handleRegisterForShift(shift.id)}
+                            disabled={!shift.is_funded}
+                            className={`flex-1 sm:flex-none px-3 sm:px-4 py-2 text-xs sm:text-sm rounded ${
+                              shift.is_funded
+                                ? 'bg-green-600 text-white hover:bg-green-700'
+                                : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                            }`}
+                            title={!shift.is_funded ? 'This shift must be funded before registration' : 'Register for this shift'}
+                          >
+                            {shift.is_funded ? 'Register' : 'Not Funded'}
+                          </button>
+                        )}
                       </div>
                     </div>
                   </li>
@@ -401,13 +460,17 @@ const MyShifts = () => {
                           {shift.title}
                         </h3>
                         <span className={`px-3 py-1 text-sm rounded-full ${
-                          shift.status === 'completed' 
+                          shift.roster_status === 'completed' 
                             ? 'bg-green-100 text-green-800'
-                            : shift.status === 'upcoming'
+                            : shift.roster_status === 'registered'
                             ? 'bg-blue-100 text-blue-800'
-                            : 'bg-yellow-100 text-yellow-800'
+                            : shift.roster_status === 'checked_in'
+                            ? 'bg-orange-100 text-orange-800'
+                            : shift.roster_status === 'pending_payment'
+                            ? 'bg-yellow-100 text-yellow-800'
+                            : 'bg-gray-100 text-gray-800'
                         }`}>
-                          {shift.status.replace('_', ' ').toUpperCase()}
+                          {(shift.roster_status || 'Unknown').replace(/_/g, ' ').toUpperCase()}
                         </span>
                       </div>
                       
@@ -445,33 +508,41 @@ const MyShifts = () => {
                     
                     {/* Action Buttons */}
                     <div className="ml-4 flex flex-col space-y-2">
-                      {shift.status === 'upcoming' && (
+                      {shift.roster_status === 'registered' && (
                         <>
                           <button
                             onClick={() => handleCheckIn(shift.id)}
-                            className="px-4 py-2 bg-green-600 text-white text-sm rounded hover:bg-green-700"
+                            className="px-4 py-2 bg-blue-600 text-white text-sm rounded hover:bg-blue-700"
                           >
                             Check In
                           </button>
                           <button
                             onClick={() => setShowShiftDetails(shift)}
-                            className="px-4 py-2 bg-blue-600 text-white text-sm rounded hover:bg-blue-700"
+                            className="px-4 py-2 bg-gray-600 text-white text-sm rounded hover:bg-gray-700"
                           >
                             View Details
                           </button>
                         </>
                       )}
                       
-                      {shift.status === 'checked_in' && (
-                        <button
-                          onClick={() => openCheckoutModal(shift.id)}
-                          className="px-4 py-2 bg-red-600 text-white text-sm rounded hover:bg-red-700"
-                        >
-                          Check Out
-                        </button>
+                      {shift.roster_status === 'checked_in' && (
+                        <>
+                          <button
+                            onClick={() => openCheckoutModal(shift.id)}
+                            className="px-4 py-2 bg-orange-600 text-white text-sm rounded hover:bg-orange-700"
+                          >
+                            Check Out
+                          </button>
+                          <button
+                            onClick={() => setShowShiftDetails(shift)}
+                            className="px-4 py-2 bg-gray-600 text-white text-sm rounded hover:bg-gray-700"
+                          >
+                            View Details
+                          </button>
+                        </>
                       )}
                       
-                      {shift.status === 'completed' && (
+                      {(shift.roster_status === 'pending_payment' || shift.roster_status === 'completed') && (
                         <button
                           onClick={() => setShowShiftDetails(shift)}
                           className="px-4 py-2 bg-gray-600 text-white text-sm rounded hover:bg-gray-700"
@@ -653,6 +724,8 @@ const MyShifts = () => {
           </div>
         )}
       </main>
+
+      <Footer />
     </div>
   );
 };
