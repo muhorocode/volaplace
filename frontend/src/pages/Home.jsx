@@ -11,6 +11,7 @@ export default function Home() {
   const [locationError, setLocationError] = useState(null);
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [authMode, setAuthMode] = useState('login');
+  const [selectedShift, setSelectedShift] = useState(null);
   const { user } = useAuth();
   const navigate = useNavigate();
 
