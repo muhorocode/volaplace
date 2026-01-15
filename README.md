@@ -69,41 +69,55 @@ VolaPlace addresses these challenges through:
 ## ✨ Key Features
 
 ### For Volunteers
-- ✅ Browse volunteer opportunities on interactive maps
-- ✅ Filter shifts by distance, date, and organization
-- ✅ GPS-verified check-in/check-out within geofenced areas
-- ✅ View shift history and track personal impact
-- ✅ Real-time shift availability updates
+- ✅ **Interactive Map Discovery** - Browse volunteer opportunities on Leaflet maps with real-time updates
+- ✅ **Smart Filtering** - Filter shifts by distance, date, organization, and project
+- ✅ **GPS Check-In/Out** - Geo-verified attendance within 20m geofenced areas
+- ✅ **Automatic Payments** - Receive instant payments upon shift completion
+- ✅ **Personal Dashboard** - Track total earnings, hours worked, and beneficiaries served
+- ✅ **Shift Status Tracking** - View upcoming, available, completed, and pending payment shifts
+- ✅ **Mobile Optimized** - Fully responsive design for on-the-go access
 
 ### For Organizations
-- ✅ Create projects with geofenced locations
-- ✅ Post and manage volunteer shifts
-- ✅ Fund shifts via M-Pesa STK Push integration
-- ✅ Monitor volunteer attendance in real-time
-- ✅ Access shift completion reports
+- ✅ **Project Management** - Create projects with custom geofenced locations
+- ✅ **Shift Creation** - Post volunteer shifts with hourly rates and bonus structures
+- ✅ **M-Pesa Funding** - Fund shifts via STK Push with real-time confirmation
+- ✅ **Demo Mode Backup** - Alternative funding when M-Pesa has service issues
+- ✅ **Volunteer Monitoring** - Track registrations, check-ins, and attendance in real-time
+- ✅ **Payment Transparency** - View all funding and disbursement transactions
+- ✅ **Dashboard Analytics** - Monitor active shifts, volunteer counts, and funding status
 
 ### For Administrators
-- ✅ Platform-wide oversight and analytics
-- ✅ Manage organizations and projects
-- ✅ Monitor all transactions and payments
-- ✅ Comprehensive reporting dashboard
+- ✅ **Platform Overview** - System-wide analytics and activity monitoring
+- ✅ **User Management** - Manage organizations, volunteers, and access permissions
+- ✅ **Transaction Monitoring** - Complete audit trail of all M-Pesa and demo transactions
+- ✅ **Payout Configuration** - Adjust platform-wide payment rules and rates
+- ✅ **Comprehensive Reporting** - Export data for analysis and compliance
 
 ---
 
 ## 🔧 Recent Updates
 
-### M-Pesa Integration (January 2026)
-- ✅ Implemented M-Pesa STK Push for organization shift funding
-- ✅ Fixed transaction type from `CustomerPayBill` to `CustomerPayBillOnline`
-- ✅ Added comprehensive error handling and logging
-- ✅ Integrated with Safaricom Daraja API sandbox
-- ✅ Tested and verified payment flow end-to-end
+### M-Pesa Payment Integration (January 2026) ✅
+- ✅ **Live M-Pesa STK Push** - Organizations fund shifts via real M-Pesa payments
+- ✅ **Real-time UI Updates** - Funded shifts instantly reflect in dashboard
+- ✅ **Transaction Verification** - Callback handling validates and records payments
+- ✅ **Demo Mode Backup** - Alternative funding method when M-Pesa services are unavailable
+- ✅ **Complete Payment Flow** - From organization funding to volunteer payout fully functional
+- ✅ **Funding Fields API** - All shift endpoints return `is_funded`, `funded_amount`, and `funding_transaction_id`
 
-### Code Quality Improvements
-- ✅ Cleaned up unnecessary console logs
-- ✅ Improved error messages for better debugging
-- ✅ Enhanced M-Pesa callback handling
-- ✅ Optimized payment route validation
+### UI/UX Enhancements (January 2026)
+- ✅ **Mobile Responsive Design** - Optimized layouts for all screen sizes
+- ✅ **Smooth Page Transitions** - Enhanced navigation with better user experience
+- ✅ **Constant Footer Component** - Persistent footer across all pages
+- ✅ **Improved Shift Manager** - Better funding UI with clear M-Pesa instructions
+- ✅ **Real-time Funding Status** - Shifts show funding status and amounts instantly
+
+### Code Quality & Performance
+- ✅ Fixed `Shift.to_dict()` to include all funding fields
+- ✅ Enhanced error handling and user feedback
+- ✅ Optimized M-Pesa callback processing
+- ✅ Improved geolocation validation and error messages
+- ✅ Cleaned up debug logging for production readiness
 
 ---
 
@@ -176,7 +190,89 @@ VolaPlace addresses these challenges through:
 
 ---
 
-## 🚀 Getting Started
+## � Payment Flow & Process
+
+VolaPlace implements a comprehensive payment system connecting organizations, volunteers, and M-Pesa for secure fund management.
+
+### End-to-End Payment Journey
+
+#### 1️⃣ **Organization Funds Shift**
+Organizations fund volunteer shifts before volunteers can register:
+
+**Via M-Pesa STK Push (Primary Method):**
+- Organization clicks "Fund with M-Pesa" in their dashboard
+- System validates minimum amount (KES 100)
+- M-Pesa STK Push sent to organization's registered phone
+- Organization enters M-Pesa PIN on their phone
+- Backend receives callback from Safaricom Daraja API
+- Shift marked as `is_funded=True` with transaction ID
+- Dashboard updates in real-time showing funded status
+
+**Via Demo Mode (Backup Method):**
+- Available when M-Pesa services experience downtime or technical issues
+- Instantly funds shift for testing and emergency scenarios
+- Same database updates and UI behavior as real payments
+- Transaction logged with type: "demo"
+
+#### 2️⃣ **Volunteer Registration**
+Once shift is funded:
+- Shift appears as "Available" on volunteer map and list
+- Volunteer clicks "Register" to join the shift
+- `ShiftRoster` entry created linking volunteer to shift
+- Status: `registered`, `checked_in=False`, `checked_out=False`
+
+#### 3️⃣ **Geo-Verified Check-In**
+On shift day, volunteer must be physically present:
+- Volunteer navigates to "Upcoming" tab
+- Clicks "Check In" button
+- System captures GPS coordinates
+- Haversine algorithm validates volunteer is within 20m of shift location
+- If valid: `checked_in=True`, `check_in_time` recorded
+- If outside geofence: Error message displayed
+
+#### 4️⃣ **Work Completion & Check-Out**
+After completing volunteer work:
+- Volunteer clicks "Check Out" in "Upcoming" tab
+- Modal prompts for "Beneficiaries Served" count
+- System calculates payment:
+  ```
+  Hours Worked = (Check-Out Time - Check-In Time)
+  Base Payment = Hours × Hourly Rate (from shift)
+  Bonus = Beneficiaries Served × Per-Beneficiary Rate (from shift)
+  Total Payment = Base Payment + Bonus
+  ```
+- Payment automatically deducted from shift's funded amount
+- Volunteer receives instant payment confirmation
+- Shift moves to "Completed" tab with payment details
+
+#### 5️⃣ **Payment Records & Tracking**
+All transactions logged in `TransactionLog` table:
+- Organization funding transactions
+- Volunteer payment disbursements
+- Running balance of shift funds
+- Complete audit trail for administrators
+
+### Payment Security Features
+- ✅ JWT authentication for all payment endpoints
+- ✅ Role-based access control (only orgs can fund, only volunteers get paid)
+- ✅ Geo-verification prevents payment fraud
+- ✅ M-Pesa callback signature verification
+- ✅ Transaction idempotency (duplicate prevention)
+- ✅ Real-time balance validation before disbursement
+
+### Supported Payment Scenarios
+| Scenario | Handling |
+|----------|----------|
+| **Insufficient funds** | Payment blocked, volunteer notified to contact org |
+| **M-Pesa timeout** | Callback processes async, status updates when received |
+| **M-Pesa service down** | Demo mode available as backup |
+| **Multiple volunteers** | Payments distributed proportionally from shift budget |
+| **Early check-out** | Payment calculated based on actual hours worked |
+| **No beneficiaries** | Base payment still processed (bonus = 0) |
+
+---
+
+## �🚀 Getting Started
 
 ### Prerequisites
 - **Node.js** 18+ and npm
