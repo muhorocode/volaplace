@@ -74,17 +74,30 @@ const MyShifts = () => {
       
       // Filter to show:
       // 1. Shifts not registered by user with spots available
-      // 2. Shifts registered by user but not yet checked in
+      // 2. Shifts registered by user but not yet checked in (derive from check_in_time)
       const available = (response.data || []).filter(
         s => {
-          const isAvailableShift = s.status === 'upcoming' && (s.volunteers_signed_up || 0) < s.max_volunteers && !s.roster_status;
-          const isRegisteredNotCheckedIn = s.roster_status === 'registered';
+          const isAvailableShift = s.status === 'upcoming' && (s.volunteers_signed_up || 0) < s.max_volunteers && !s.roster_status && !s.check_in_time;
+          const isRegisteredNotCheckedIn = s.roster_status === 'registered' || (!s.check_in_time && s.roster_status);
           return isAvailableShift || isRegisteredNotCheckedIn;
         }
       );
       setAvailableShifts(available);
     } catch (err) {
       console.error('Error fetching available shifts:', err);
+    }
+  };
+
+  const fetchAllShifts = async () => {
+    setLoading(true);
+    try {
+      await fetchMyShifts();
+      await fetchAvailableShifts();
+      toast.success('Data refreshed successfully!');
+    } catch (err) {
+      toast.error('Failed to refresh data');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -290,23 +303,53 @@ const MyShifts = () => {
     }
   };
 
+  // Helper function to derive shift status from raw data fields
+  const deriveShiftStatus = (shift) => {
+    // Completed: is_paid === true OR (check_out_time exists AND payout_amount > 0)
+    if (shift.is_paid === true || (shift.check_out_time && shift.payout_amount > 0)) {
+      return 'completed';
+    }
+    
+    // Pending Payment: check_out_time exists AND !is_paid
+    if (shift.check_out_time && !shift.is_paid) {
+      return 'pending_payment';
+    }
+    
+    // In Progress (Checked In): check_in_time exists AND check_out_time is null
+    if (shift.check_in_time && !shift.check_out_time) {
+      return 'checked_in';
+    }
+    
+    // Upcoming/Registered: check_in_time is null
+    // Use roster_status as fallback for registered state
+    if (!shift.check_in_time) {
+      return shift.roster_status === 'registered' ? 'registered' : 'available';
+    }
+    
+    return 'unknown';
+  };
+
   const filteredShifts = shifts.filter(shift => {
-    // Only show shifts the volunteer has registered for
-    if (!shift.roster_status) return false;
+    // Derive the actual status from raw data fields
+    const actualStatus = deriveShiftStatus(shift);
+    
+    // Only show shifts the volunteer has registered for (or has interaction with)
+    // Skip shifts with no check_in_time and no roster_status
+    if (!shift.check_in_time && !shift.roster_status) return false;
     
     switch (activeTab) {
       case 'upcoming':
         // Show only registered status (not checked in yet)
-        return shift.roster_status === 'registered';
+        return actualStatus === 'registered';
       case 'inprogress':
         // Show checked_in status shifts
-        return shift.roster_status === 'checked_in';
+        return actualStatus === 'checked_in';
       case 'pending':
         // Show checked out but payment pending admin approval
-        return shift.roster_status === 'pending_payment' || (shift.check_out_time && !shift.is_paid);
+        return actualStatus === 'pending_payment';
       case 'completed':
         // Show completed and paid shifts
-        return shift.roster_status === 'completed' || (shift.check_out_time && shift.is_paid);
+        return actualStatus === 'completed';
       default:
         return true;
     }
@@ -326,12 +369,26 @@ const MyShifts = () => {
       {/* Header */}
       <header className="bg-white shadow">
         <div className="max-w-7xl mx-auto py-4 sm:py-6 px-4 sm:px-6 lg:px-8">
-          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">
-            My Volunteer Shifts
-          </h1>
-          <p className="text-sm sm:text-base text-gray-600 mt-2">
-            Track your volunteering journey and earnings
-          </p>
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">
+                My Volunteer Shifts
+              </h1>
+              <p className="text-sm sm:text-base text-gray-600 mt-2">
+                Track your volunteering journey and earnings
+              </p>
+            </div>
+            <button
+              onClick={fetchAllShifts}
+              disabled={loading}
+              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center gap-2"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
+              {loading ? 'Refreshing...' : 'Refresh Data'}
+            </button>
+          </div>
         </div>
       </header>
 
@@ -459,12 +516,21 @@ const MyShifts = () => {
               <ul className="divide-y divide-gray-200">
                 {availableShifts.map((shift) => {
                   // DEBUGGING: Log shift status for troubleshooting
-                  console.log("Shift:", shift.id, "Roster Status:", shift.roster_status, "Is Funded:", shift.is_funded);
+                  console.log("Shift:", shift.id, "Roster Status:", shift.roster_status, "Is Funded:", shift.is_funded, "Check In:", shift.check_in_time, "Check Out:", shift.check_out_time, "Is Paid:", shift.is_paid);
                   
-                  // STRICT STATE MACHINE LOGIC - DO NOT GUESS
+                  // Derive actual status from raw data fields (REFRESH-PROOF)
+                  const actualStatus = (() => {
+                    if (shift.is_paid === true || (shift.check_out_time && shift.payout_amount > 0)) return 'completed';
+                    if (shift.check_out_time && !shift.is_paid) return 'pending_payment';
+                    if (shift.check_in_time && !shift.check_out_time) return 'checked_in';
+                    if (shift.roster_status === 'registered' || (!shift.check_in_time && shift.roster_status)) return 'registered';
+                    return 'available';
+                  })();
+                  
+                  // STRICT STATE MACHINE LOGIC - BASED ON DERIVED STATUS
                   const renderActionButton = () => {
-                    // STEP 4: If roster_status === 'completed' OR is_paid === true -> Show Paid/Completed Badge
-                    if (shift.roster_status === 'completed' || shift.is_paid === true) {
+                    // STEP 4: If completed or paid -> Show Paid/Completed Badge
+                    if (actualStatus === 'completed') {
                       return (
                         <span className="flex-1 sm:flex-none px-3 sm:px-4 py-2 bg-green-100 text-green-800 text-xs sm:text-sm rounded text-center font-semibold">
                           ✓ Paid/Completed
@@ -472,8 +538,8 @@ const MyShifts = () => {
                       );
                     }
                     
-                    // STEP 3: If roster_status === 'checked_in' -> Show ORANGE "Check Out" button
-                    if (shift.roster_status === 'checked_in') {
+                    // STEP 3: If checked_in -> Show ORANGE "Check Out" button
+                    if (actualStatus === 'checked_in') {
                       return (
                         <button
                           onClick={() => openCheckoutModal(shift.id)}
@@ -484,8 +550,8 @@ const MyShifts = () => {
                       );
                     }
                     
-                    // STEP 2: If roster_status === 'registered' -> Show GREEN "Check In" button
-                    if (shift.roster_status === 'registered') {
+                    // STEP 2: If registered -> Show GREEN "Check In" button
+                    if (actualStatus === 'registered') {
                       return (
                         <button
                           onClick={() => handleCheckIn(shift.id)}
@@ -496,7 +562,7 @@ const MyShifts = () => {
                       );
                     }
                     
-                    // STEP 1: If NOT in roster (!roster_status) -> Show BLUE "Register" button
+                    // STEP 1: If available -> Show BLUE "Register" button
                     return (
                       <button
                         onClick={() => handleRegisterForShift(shift.id)}
@@ -767,8 +833,8 @@ const MyShifts = () => {
               <input
                 type="number"
                 min="0"
-                value={beneficiariesCount}
-                onChange={(e) => setBeneficiariesCount(e.target.value)}
+                value={beneficiariesCount === 0 ? '' : beneficiariesCount}
+                onChange={(e) => setBeneficiariesCount(e.target.value === '' ? 0 : parseInt(e.target.value) || 0)}
                 placeholder="Enter number of beneficiaries"
                 className="w-full px-3 py-2 border border-gray-300 rounded-md mb-4 focus:ring-2 focus:ring-green-500 focus:border-transparent"
                 autoFocus
@@ -777,7 +843,7 @@ const MyShifts = () => {
                 <button
                   onClick={() => {
                     setShowCheckoutModal(false);
-                    setBeneficiariesCount('');
+                    setBeneficiariesCount(0);
                   }}
                   className="flex-1 px-4 py-2 border border-gray-300 rounded-md hover:bg-gray-50"
                 >
