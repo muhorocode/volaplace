@@ -101,11 +101,7 @@ export default function Home() {
             <SearchMap 
               userLocation={userLocation}
               onShiftSelect={(shift) => {
-                toast(`To sign up for "${shift.title}", please login or register.`, {
-                  icon: '📋',
-                  duration: 4000
-                });
-                openAuthModal('login');
+                setSelectedShift(shift);
               }}
             />
           </div>
@@ -171,6 +167,88 @@ export default function Home() {
         onClose={() => setShowAuthModal(false)}
         initialMode={authMode}
       />
+
+      {/* Shift Details Modal */}
+      {selectedShift && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="p-6">
+              <div className="flex justify-between items-start mb-4">
+                <h2 className="text-2xl font-bold text-gray-900">{selectedShift.title}</h2>
+                <button
+                  onClick={() => setSelectedShift(null)}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+
+              <div className="space-y-4">
+                <div>
+                  <h3 className="font-semibold text-gray-700">Description</h3>
+                  <p className="text-gray-600">{selectedShift.description || 'No description provided'}</p>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <h3 className="font-semibold text-gray-700">Date</h3>
+                    <p className="text-gray-600">
+                      📅 {selectedShift.date ? new Date(selectedShift.date).toLocaleDateString() : 'N/A'}
+                    </p>
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-gray-700">Time</h3>
+                    <p className="text-gray-600">⏰ {selectedShift.start_time} - {selectedShift.end_time}</p>
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-gray-700">Location</h3>
+                    <p className="text-gray-600">📍 {selectedShift.project?.name || 'N/A'}</p>
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-gray-700">Volunteers Needed</h3>
+                    <p className="text-gray-600">👥 {selectedShift.max_volunteers || 0}</p>
+                  </div>
+                  {selectedShift.distance_km && (
+                    <div>
+                      <h3 className="font-semibold text-gray-700">Distance</h3>
+                      <p className="text-gray-600">🚶 {selectedShift.distance_km.toFixed(1)} km away</p>
+                    </div>
+                  )}
+                  {selectedShift.is_funded && selectedShift.funded_amount && (
+                    <div>
+                      <h3 className="font-semibold text-gray-700">Funded</h3>
+                      <p className="text-green-600 font-semibold">✓ KES {selectedShift.funded_amount.toLocaleString()}</p>
+                    </div>
+                  )}
+                </div>
+
+                <div className="pt-4 border-t space-y-3">
+                  <button
+                    onClick={() => {
+                      setSelectedShift(null);
+                      openAuthModal('signup');
+                    }}
+                    className="w-full bg-blue-600 text-white py-3 px-4 rounded-lg hover:bg-blue-700 font-medium"
+                  >
+                    Sign Up to Register for this Shift
+                  </button>
+                  <button
+                    onClick={() => {
+                      setSelectedShift(null);
+                      openAuthModal('login');
+                    }}
+                    className="w-full bg-gray-200 text-gray-700 py-3 px-4 rounded-lg hover:bg-gray-300 font-medium"
+                  >
+                    Already have an account? Login
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
