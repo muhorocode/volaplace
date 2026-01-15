@@ -420,7 +420,63 @@ const MyShifts = () => {
               </div>
             ) : (
               <ul className="divide-y divide-gray-200">
-                {availableShifts.map((shift) => (
+                {availableShifts.map((shift) => {
+                  // DEBUG: Log shift status for troubleshooting
+                  console.log('Shift Status:', shift.id, shift.roster_status);
+                  
+                  // FAIL-SAFE STATE MACHINE LOGIC
+                  const renderActionButton = () => {
+                    // IF roster_status is 'registered' or 'upcoming' -> Show GREEN "Check In" button
+                    if (shift.roster_status === 'registered' || shift.roster_status === 'upcoming') {
+                      return (
+                        <button
+                          onClick={() => handleCheckIn(shift.id)}
+                          className="flex-1 sm:flex-none px-3 sm:px-4 py-2 bg-green-600 text-white text-xs sm:text-sm rounded hover:bg-green-700"
+                        >
+                          Check In
+                        </button>
+                      );
+                    }
+                    
+                    // IF roster_status is 'checked_in' -> Show ORANGE "Check Out" button
+                    if (shift.roster_status === 'checked_in') {
+                      return (
+                        <button
+                          onClick={() => openCheckoutModal(shift.id)}
+                          className="flex-1 sm:flex-none px-3 sm:px-4 py-2 bg-orange-600 text-white text-xs sm:text-sm rounded hover:bg-orange-700"
+                        >
+                          Check Out
+                        </button>
+                      );
+                    }
+                    
+                    // IF roster_status is 'completed' -> Show GRAY "Completed" badge
+                    if (shift.roster_status === 'completed') {
+                      return (
+                        <span className="flex-1 sm:flex-none px-3 sm:px-4 py-2 bg-gray-400 text-white text-xs sm:text-sm rounded text-center">
+                          Completed
+                        </span>
+                      );
+                    }
+                    
+                    // DEFAULT (null/undefined roster_status) -> Show BLUE "Register" button
+                    return (
+                      <button
+                        onClick={() => handleRegisterForShift(shift.id)}
+                        disabled={!shift.is_funded}
+                        className={`flex-1 sm:flex-none px-3 sm:px-4 py-2 text-xs sm:text-sm rounded ${
+                          shift.is_funded
+                            ? 'bg-blue-600 text-white hover:bg-blue-700'
+                            : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                        }`}
+                        title={!shift.is_funded ? 'This shift must be funded before registration' : 'Register for this shift'}
+                      >
+                        {shift.is_funded ? 'Register' : 'Not Funded'}
+                      </button>
+                    );
+                  };
+                  
+                  return (
                   <li key={shift.id} className="px-4 sm:px-6 py-4 hover:bg-gray-50">
                     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
                       <div className="flex-1">
@@ -455,32 +511,12 @@ const MyShifts = () => {
                         >
                           View Details
                         </button>
-                        {/* State Machine: Not Registered -> Register (Blue) | Registered -> Check In (Green) */}
-                        {shift.roster_status === 'registered' ? (
-                          <button
-                            onClick={() => handleCheckIn(shift.id)}
-                            className="flex-1 sm:flex-none px-3 sm:px-4 py-2 bg-green-600 text-white text-xs sm:text-sm rounded hover:bg-green-700"
-                          >
-                            Check In
-                          </button>
-                        ) : (
-                          <button
-                            onClick={() => handleRegisterForShift(shift.id)}
-                            disabled={!shift.is_funded}
-                            className={`flex-1 sm:flex-none px-3 sm:px-4 py-2 text-xs sm:text-sm rounded ${
-                              shift.is_funded
-                                ? 'bg-blue-600 text-white hover:bg-blue-700'
-                                : 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                            }`}
-                            title={!shift.is_funded ? 'This shift must be funded before registration' : 'Register for this shift'}
-                          >
-                            {shift.is_funded ? 'Register' : 'Not Funded'}
-                          </button>
-                        )}
+                        {renderActionButton()}
                       </div>
                     </div>
                   </li>
-                ))}
+                  );
+                })}
               </ul>
             )}
           </div>

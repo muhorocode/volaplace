@@ -75,6 +75,7 @@ const SearchMap = ({ onShiftSelect, userLocation }) => {
   };
 
   // Custom icons - different colors for shift status
+  // REQUIREMENT: User Location=RED, Active/In-Progress=GREEN, Upcoming=BLUE
   const getShiftIcon = (shift) => {
     const now = new Date();
     const shiftDate = new Date(shift.date);
@@ -84,12 +85,12 @@ const SearchMap = ({ onShiftSelect, userLocation }) => {
     if (shift.status === 'completed' || isPast) {
       // Gray for completed/past shifts
       iconUrl = 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-grey.png';
-    } else if (shift.status === 'in_progress' || shift.status === 'checked_in') {
-      // Orange for in-progress
-      iconUrl = 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-orange.png';
-    } else if (shift.status === 'upcoming') {
-      // Green for upcoming/active
+    } else if (shift.status === 'in_progress' || shift.status === 'checked_in' || shift.status === 'active') {
+      // GREEN for active/in-progress shifts
       iconUrl = 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-green.png';
+    } else if (shift.status === 'upcoming') {
+      // BLUE for upcoming shifts
+      iconUrl = 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-blue.png';
     } else {
       // Blue default
       iconUrl = 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-blue.png';
@@ -111,6 +112,19 @@ const SearchMap = ({ onShiftSelect, userLocation }) => {
     }
   };
 
+  const handleViewDetails = (shift) => {
+    const token = localStorage.getItem('token');
+    
+    if (token) {
+      // User is logged in - navigate to shift details/register page
+      window.location.href = `/volunteer/shifts?shiftId=${shift.id}`;
+    } else {
+      // User is logged out - save intended destination and redirect to login
+      localStorage.setItem('redirect_after_login', `/volunteer/shifts?shiftId=${shift.id}`);
+      window.location.href = '/login';
+    }
+  };
+
   if (loading) {
     return (
       <div className="h-full w-full flex items-center justify-center bg-gray-100">
@@ -120,11 +134,11 @@ const SearchMap = ({ onShiftSelect, userLocation }) => {
   }
 
   return (
-    <div className="relative w-full h-full">
+    <div className="relative w-full h-full z-0">
       <MapContainer
         center={mapCenter}
         zoom={13}
-        className="h-full w-full"
+        className="h-full w-full z-0"
         ref={mapRef}
       >
         <TileLayer
@@ -188,7 +202,7 @@ const SearchMap = ({ onShiftSelect, userLocation }) => {
                     )}
                   </div>
                   <button
-                    onClick={() => handleShiftClick(shift)}
+                    onClick={() => handleViewDetails(shift)}
                     className="mt-3 w-full bg-blue-600 text-white py-1 px-3 rounded hover:bg-blue-700 text-sm"
                   >
                     View Details
