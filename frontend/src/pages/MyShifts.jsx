@@ -12,7 +12,7 @@ const MyShifts = () => {
   const [shifts, setShifts] = useState([]);
   const [availableShifts, setAvailableShifts] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState('upcoming'); // 'upcoming', 'available', 'completed', 'pending'
+  const [activeTab, setActiveTab] = useState('available'); // 'upcoming', 'available', 'inprogress', 'completed', 'pending'
   const [selectedShift, setSelectedShift] = useState(null);
   const [showCheckoutModal, setShowCheckoutModal] = useState(false);
   const [checkoutShiftId, setCheckoutShiftId] = useState(null);
@@ -320,6 +320,16 @@ const MyShifts = () => {
                 }`}
               >
                 Available ({availableShifts.length})
+              </button>
+              <button
+                onClick={() => setActiveTab('inprogress')}
+                className={`py-3 sm:py-4 px-4 sm:px-6 text-center border-b-2 font-medium text-xs sm:text-sm whitespace-nowrap ${
+                  activeTab === 'inprogress'
+                    ? 'border-orange-500 text-orange-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                }`}
+              >
+                In Progress
               </button>
               <button
                 onClick={() => setActiveTab('completed')}
