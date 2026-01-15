@@ -8,6 +8,34 @@ import Footer from '../components/Footer';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
+// LocalStorage helpers to persist roster status across refresh/logout
+const ROSTER_STORAGE_KEY = 'volunteer_roster_status';
+
+const saveRosterStatus = (userId, shiftId, status, additionalData = {}) => {
+  try {
+    const stored = JSON.parse(localStorage.getItem(ROSTER_STORAGE_KEY) || '{}');
+    if (!stored[userId]) stored[userId] = {};
+    stored[userId][shiftId] = {
+      roster_status: status,
+      updated_at: new Date().toISOString(),
+      ...additionalData
+    };
+    localStorage.setItem(ROSTER_STORAGE_KEY, JSON.stringify(stored));
+  } catch (err) {
+    console.error('Error saving roster status:', err);
+  }
+};
+
+const getRosterStatus = (userId) => {
+  try {
+    const stored = JSON.parse(localStorage.getItem(ROSTER_STORAGE_KEY) || '{}');
+    return stored[userId] || {};
+  } catch (err) {
+    console.error('Error reading roster status:', err);
+    return {};
+  }
+};
+
 const MyShifts = () => {
   const [shifts, setShifts] = useState([]);
   const [availableShifts, setAvailableShifts] = useState([]);
@@ -48,8 +76,26 @@ const MyShifts = () => {
         }
       });
       
-      setShifts(response.data || []);
-      calculateStats(response.data || []);
+      // Merge backend data with localStorage roster status
+      const rosterData = getRosterStatus(user?.id);
+      const mergedShifts = (response.data || []).map(shift => {
+        const savedRoster = rosterData[shift.id];
+        if (savedRoster) {
+          return {
+            ...shift,
+            roster_status: savedRoster.roster_status,
+            check_in_time: savedRoster.check_in_time || shift.check_in_time,
+            check_out_time: savedRoster.check_out_time || shift.check_out_time,
+            is_paid: savedRoster.is_paid !== undefined ? savedRoster.is_paid : shift.is_paid,
+            payout_amount: savedRoster.payout_amount || shift.payout_amount,
+            beneficiaries_served: savedRoster.beneficiaries_served || shift.beneficiaries_served
+          };
+        }
+        return shift;
+      });
+      
+      setShifts(mergedShifts);
+      calculateStats(mergedShifts);
     } catch (err) {
       console.error('Error fetching shifts:', err);
       // If unauthorized, redirect to home
@@ -72,10 +118,28 @@ const MyShifts = () => {
         }
       });
       
+      // Merge backend data with localStorage roster status
+      const rosterData = getRosterStatus(user?.id);
+      const mergedShifts = (response.data || []).map(shift => {
+        const savedRoster = rosterData[shift.id];
+        if (savedRoster) {
+          return {
+            ...shift,
+            roster_status: savedRoster.roster_status,
+            check_in_time: savedRoster.check_in_time || shift.check_in_time,
+            check_out_time: savedRoster.check_out_time || shift.check_out_time,
+            is_paid: savedRoster.is_paid !== undefined ? savedRoster.is_paid : shift.is_paid,
+            payout_amount: savedRoster.payout_amount || shift.payout_amount,
+            beneficiaries_served: savedRoster.beneficiaries_served || shift.beneficiaries_served
+          };
+        }
+        return shift;
+      });
+      
       // Filter to show:
       // 1. Shifts not registered by user with spots available
       // 2. Shifts registered by user but not yet checked in (derive from check_in_time)
-      const available = (response.data || []).filter(
+      const available = mergedShifts.filter(
         s => {
           const isAvailableShift = s.status === 'upcoming' && (s.volunteers_signed_up || 0) < s.max_volunteers && !s.roster_status && !s.check_in_time;
           const isRegisteredNotCheckedIn = s.roster_status === 'registered' || (!s.check_in_time && s.roster_status);
@@ -145,8 +209,16 @@ const MyShifts = () => {
       if (response.status === 200) {
         toast.success('Checked in successfully!');
         
+        const now = new Date().toISOString();
+        
+        // Save to localStorage for persistence
+        saveRosterStatus(user?.id, shiftId, 'checked_in', {
+          check_in_time: now
+        });
+        
         // OPTIMISTIC UI UPDATE ONLY - DO NOT RE-FETCH
         // Update both shifts and availableShifts to keep state consistent
+        // Set roster_status AND check_in_time for proper status derivation
         const updatedShift = availableShifts.find(s => s.id === shiftId);
         
         setShifts(prevShifts => {
@@ -154,18 +226,18 @@ const MyShifts = () => {
           if (existing) {
             return prevShifts.map(s => 
               s.id === shiftId 
-                ? { ...s, roster_status: 'checked_in' } 
+                ? { ...s, roster_status: 'checked_in', check_in_time: now } 
                 : s
             );
           } else {
-            return [...prevShifts, { ...updatedShift, roster_status: 'checked_in' }];
+            return [...prevShifts, { ...updatedShift, roster_status: 'checked_in', check_in_time: now }];
           }
         });
         
         setAvailableShifts(prevShifts => 
           prevShifts.map(s => 
             s.id === shiftId 
-              ? { ...s, roster_status: 'checked_in' } 
+              ? { ...s, roster_status: 'checked_in', check_in_time: now } 
               : s
           )
         );
@@ -214,20 +286,30 @@ const MyShifts = () => {
       if (response.status === 200) {
         const { message, payout_amount, payment_status } = response.data;
         
-        if (payment_status === 'completed') {
-          toast.success(`${message} You earned KES ${payout_amount}!`);
-        } else if (payment_status === 'partial') {
-          toast.success(message);
-        } else {
-          toast.success(`Checked out! Earned KES ${payout_amount}. ${message}`);
-        }
+        const now = new Date().toISOString();
         
-        // OPTIMISTIC UI UPDATE ONLY - DO NOT RE-FETCH
-        // Update shift to pending_payment status
+        // Save to localStorage as PENDING_PAYMENT (waiting for admin approval)
+        saveRosterStatus(user?.id, checkoutShiftId, 'pending_payment', {
+          check_out_time: now,
+          payout_amount,
+          beneficiaries_served: parseInt(beneficiariesCount),
+          is_paid: false
+        });
+        
+        toast.success(`Checked out! Payment pending admin approval. Expected: KES ${payout_amount}`);
+        
+        // OPTIMISTIC UI UPDATE - Set to PENDING_PAYMENT (not completed yet)
         setShifts(prevShifts => 
           prevShifts.map(s => 
             s.id === checkoutShiftId 
-              ? { ...s, roster_status: 'pending_payment', payout_amount, beneficiaries_served: parseInt(beneficiariesCount) } 
+              ? { 
+                  ...s, 
+                  roster_status: 'pending_payment', 
+                  is_paid: false, 
+                  check_out_time: now, 
+                  payout_amount, 
+                  beneficiaries_served: parseInt(beneficiariesCount) 
+                } 
               : s
           )
         );
@@ -235,7 +317,14 @@ const MyShifts = () => {
         setAvailableShifts(prevShifts => 
           prevShifts.map(s => 
             s.id === checkoutShiftId 
-              ? { ...s, roster_status: 'pending_payment', payout_amount, beneficiaries_served: parseInt(beneficiariesCount) } 
+              ? { 
+                  ...s, 
+                  roster_status: 'pending_payment', 
+                  is_paid: false, 
+                  check_out_time: now, 
+                  payout_amount, 
+                  beneficiaries_served: parseInt(beneficiariesCount) 
+                } 
               : s
           )
         );
@@ -268,6 +357,9 @@ const MyShifts = () => {
       
       if (response.status === 200 || response.status === 201) {
         toast.success('Successfully registered for shift!');
+        
+        // Save to localStorage for persistence
+        saveRosterStatus(user?.id, shiftId, 'registered');
         
         // OPTIMISTIC UI UPDATE ONLY - DO NOT RE-FETCH
         // Update both availableShifts and shifts to keep state consistent
@@ -303,15 +395,37 @@ const MyShifts = () => {
     }
   };
 
+  // Function to refresh data and check for payment updates
+  const handleRefreshData = async () => {
+    toast.loading('Refreshing data...');
+    await fetchMyShifts();
+    await fetchAvailableShifts();
+    toast.dismiss();
+    toast.success('Data refreshed!');
+  };
+
   // Helper function to derive shift status from raw data fields
+  // CRITICAL: Check backend-authoritative fields (is_paid) BEFORE local roster_status
   const deriveShiftStatus = (shift) => {
-    // Completed: is_paid === true OR (check_out_time exists AND payout_amount > 0)
-    if (shift.is_paid === true || (shift.check_out_time && shift.payout_amount > 0)) {
+    // FIRST: Check if payment is completed (backend-authoritative)
+    // This ensures admin-approved payments override local state
+    if (shift.is_paid === true) {
       return 'completed';
     }
     
-    // Pending Payment: check_out_time exists AND !is_paid
-    if (shift.check_out_time && !shift.is_paid) {
+    // SECOND: Check if checked out and has payout (backend says completed)
+    if (shift.check_out_time && shift.payout_amount > 0 && shift.is_paid !== false) {
+      return 'completed';
+    }
+    
+    // THIRD: Use roster_status for in-progress states (optimistic updates)
+    // But DON'T trust it for 'completed' since admin approval changes that
+    if (shift.roster_status && shift.roster_status !== 'completed') {
+      return shift.roster_status;
+    }
+    
+    // Pending Payment: check_out_time exists AND explicitly not paid
+    if (shift.check_out_time && shift.is_paid === false) {
       return 'pending_payment';
     }
     
@@ -320,13 +434,13 @@ const MyShifts = () => {
       return 'checked_in';
     }
     
-    // Upcoming/Registered: check_in_time is null
-    // Use roster_status as fallback for registered state
-    if (!shift.check_in_time) {
-      return shift.roster_status === 'registered' ? 'registered' : 'available';
+    // Registered: has roster_status but no check-in
+    if (shift.roster_status === 'registered') {
+      return 'registered';
     }
     
-    return 'unknown';
+    // Available: no interactions yet
+    return 'available';
   };
 
   const filteredShifts = shifts.filter(shift => {
@@ -334,8 +448,8 @@ const MyShifts = () => {
     const actualStatus = deriveShiftStatus(shift);
     
     // Only show shifts the volunteer has registered for (or has interaction with)
-    // Skip shifts with no check_in_time and no roster_status
-    if (!shift.check_in_time && !shift.roster_status) return false;
+    // Skip shifts with no check_in_time, no roster_status, AND not paid
+    if (!shift.check_in_time && !shift.roster_status && !shift.is_paid) return false;
     
     switch (activeTab) {
       case 'upcoming':
@@ -349,7 +463,8 @@ const MyShifts = () => {
         return actualStatus === 'pending_payment';
       case 'completed':
         // Show completed and paid shifts
-        return actualStatus === 'completed';
+        // ROBUST: Check derived status OR is_paid flag directly
+        return actualStatus === 'completed' || shift.is_paid === true;
       default:
         return true;
     }
@@ -662,7 +777,7 @@ const MyShifts = () => {
                             : shift.roster_status === 'registered'
                             ? 'bg-blue-100 text-blue-800'
                             : shift.roster_status === 'checked_in'
-                            ? 'bg-orange-100 text-orange-800'
+                            ? 'bg-green-100 text-green-800'
                             : shift.roster_status === 'pending_payment'
                             ? 'bg-yellow-100 text-yellow-800'
                             : 'bg-gray-100 text-gray-800'
@@ -834,7 +949,10 @@ const MyShifts = () => {
                 type="number"
                 min="0"
                 value={beneficiariesCount === 0 ? '' : beneficiariesCount}
-                onChange={(e) => setBeneficiariesCount(e.target.value === '' ? 0 : parseInt(e.target.value) || 0)}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setBeneficiariesCount(val === '' ? 0 : Number(val));
+                }}
                 placeholder="Enter number of beneficiaries"
                 className="w-full px-3 py-2 border border-gray-300 rounded-md mb-4 focus:ring-2 focus:ring-green-500 focus:border-transparent"
                 autoFocus

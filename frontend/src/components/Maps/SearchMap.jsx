@@ -81,14 +81,22 @@ const SearchMap = ({ onShiftSelect, userLocation }) => {
     const shiftDate = new Date(shift.date);
     const isPast = shiftDate < now;
     
+    // Check if shift is active/in-progress
+    const isActive = shift.status === 'in_progress' || 
+                     shift.status === 'checked_in' || 
+                     shift.status === 'active' ||
+                     shift.roster_status === 'checked_in';
+    
+    const isUpcoming = shift.status === 'upcoming';
+    
     let iconUrl;
     if (shift.status === 'completed' || isPast) {
       // Gray for completed/past shifts
       iconUrl = 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-grey.png';
-    } else if (shift.status === 'in_progress' || shift.status === 'checked_in' || shift.status === 'active') {
+    } else if (isActive) {
       // GREEN for active/in-progress shifts
       iconUrl = 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-green.png';
-    } else if (shift.status === 'upcoming') {
+    } else if (isUpcoming) {
       // BLUE for upcoming shifts
       iconUrl = 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-blue.png';
     } else {
