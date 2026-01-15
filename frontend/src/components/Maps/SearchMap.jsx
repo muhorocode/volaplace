@@ -113,14 +113,14 @@ const SearchMap = ({ onShiftSelect, userLocation }) => {
 
   if (loading) {
     return (
-      <div className="h-96 w-full flex items-center justify-center bg-gray-100 rounded-lg">
+      <div className="h-full w-full flex items-center justify-center bg-gray-100">
         <div className="text-lg text-gray-600">Loading map...</div>
       </div>
     );
   }
 
   return (
-    <div className="relative w-full h-96 rounded-lg overflow-hidden shadow-lg">
+    <div className="relative w-full h-full">
       <MapContainer
         center={mapCenter}
         zoom={13}

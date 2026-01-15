@@ -131,11 +131,36 @@ const MyShifts = () => {
       
       if (response.status === 200) {
         toast.success('Checked in successfully!');
-        fetchMyShifts();
+        
+        // Update local state immediately
+        setShifts(prevShifts => 
+          prevShifts.map(s => 
+            s.id === shiftId 
+              ? { ...s, roster_status: 'checked_in' } 
+              : s
+          )
+        );
+        setAvailableShifts(prevShifts => 
+          prevShifts.filter(s => s.id !== shiftId)
+        );
+        
+        // Switch to In Progress tab
         setActiveTab('inprogress');
+        
+        // Refresh data from server
+        fetchMyShifts();
+        fetchAvailableShifts();
       }
     } catch (err) {
-      toast.error(err.response?.data?.error || 'Failed to check in');
+      // Check for geofence error specifically
+      const errorMsg = err.response?.data?.error || '';
+      if (errorMsg.toLowerCase().includes('geofence') || 
+          errorMsg.toLowerCase().includes('location') ||
+          errorMsg.toLowerCase().includes('radius')) {
+        toast.error('You must be at the location to check in.');
+      } else {
+        toast.error(errorMsg || 'Failed to check in');
+      }
       console.error('Error checking in:', err);
     }
   };
@@ -201,10 +226,26 @@ const MyShifts = () => {
       
       if (response.status === 200 || response.status === 201) {
         toast.success('Successfully registered for shift!');
-        fetchMyShifts();
-        fetchAvailableShifts();
+        
+        // Update local state immediately to show Check In button
+        setAvailableShifts(prevShifts => 
+          prevShifts.map(s => 
+            s.id === shiftId 
+              ? { ...s, roster_status: 'registered', volunteers_signed_up: (s.volunteers_signed_up || 0) + 1 } 
+              : s
+          )
+        );
+        setShifts(prevShifts => [
+          ...prevShifts,
+          { ...availableShifts.find(s => s.id === shiftId), roster_status: 'registered' }
+        ]);
+        
         // Stay on available tab to show Check In button
         setActiveTab('available');
+        
+        // Refresh data from server
+        fetchMyShifts();
+        fetchAvailableShifts();
       }
     } catch (err) {
       toast.error(err.response?.data?.error || 'Failed to register for shift');
@@ -414,10 +455,11 @@ const MyShifts = () => {
                         >
                           View Details
                         </button>
+                        {/* State Machine: Not Registered -> Register (Blue) | Registered -> Check In (Green) */}
                         {shift.roster_status === 'registered' ? (
                           <button
                             onClick={() => handleCheckIn(shift.id)}
-                            className="flex-1 sm:flex-none px-3 sm:px-4 py-2 bg-blue-600 text-white text-xs sm:text-sm rounded hover:bg-blue-700"
+                            className="flex-1 sm:flex-none px-3 sm:px-4 py-2 bg-green-600 text-white text-xs sm:text-sm rounded hover:bg-green-700"
                           >
                             Check In
                           </button>
@@ -427,7 +469,7 @@ const MyShifts = () => {
                             disabled={!shift.is_funded}
                             className={`flex-1 sm:flex-none px-3 sm:px-4 py-2 text-xs sm:text-sm rounded ${
                               shift.is_funded
-                                ? 'bg-green-600 text-white hover:bg-green-700'
+                                ? 'bg-blue-600 text-white hover:bg-blue-700'
                                 : 'bg-gray-300 text-gray-500 cursor-not-allowed'
                             }`}
                             title={!shift.is_funded ? 'This shift must be funded before registration' : 'Register for this shift'}
