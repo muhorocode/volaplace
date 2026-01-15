@@ -16,7 +16,7 @@ const MyShifts = () => {
   const [selectedShift, setSelectedShift] = useState(null);
   const [showCheckoutModal, setShowCheckoutModal] = useState(false);
   const [checkoutShiftId, setCheckoutShiftId] = useState(null);
-  const [beneficiariesCount, setBeneficiariesCount] = useState('');
+  const [beneficiariesCount, setBeneficiariesCount] = useState(0);
   const [showShiftDetails, setShowShiftDetails] = useState(null);
   const [stats, setStats] = useState({
     totalEarned: 0,
@@ -132,24 +132,33 @@ const MyShifts = () => {
       if (response.status === 200) {
         toast.success('Checked in successfully!');
         
-        // Update local state immediately
-        setShifts(prevShifts => 
+        // OPTIMISTIC UI UPDATE ONLY - DO NOT RE-FETCH
+        // Update both shifts and availableShifts to keep state consistent
+        const updatedShift = availableShifts.find(s => s.id === shiftId);
+        
+        setShifts(prevShifts => {
+          const existing = prevShifts.find(s => s.id === shiftId);
+          if (existing) {
+            return prevShifts.map(s => 
+              s.id === shiftId 
+                ? { ...s, roster_status: 'checked_in' } 
+                : s
+            );
+          } else {
+            return [...prevShifts, { ...updatedShift, roster_status: 'checked_in' }];
+          }
+        });
+        
+        setAvailableShifts(prevShifts => 
           prevShifts.map(s => 
             s.id === shiftId 
               ? { ...s, roster_status: 'checked_in' } 
               : s
           )
         );
-        setAvailableShifts(prevShifts => 
-          prevShifts.filter(s => s.id !== shiftId)
-        );
         
         // Switch to In Progress tab
         setActiveTab('inprogress');
-        
-        // Refresh data from server
-        fetchMyShifts();
-        fetchAvailableShifts();
       }
     } catch (err) {
       // Check for geofence error specifically
@@ -167,7 +176,7 @@ const MyShifts = () => {
 
   const openCheckoutModal = (shiftId) => {
     setCheckoutShiftId(shiftId);
-    setBeneficiariesCount('');
+    setBeneficiariesCount(0);
     setShowCheckoutModal(true);
   };
 
@@ -200,10 +209,30 @@ const MyShifts = () => {
           toast.success(`Checked out! Earned KES ${payout_amount}. ${message}`);
         }
         
+        // OPTIMISTIC UI UPDATE ONLY - DO NOT RE-FETCH
+        // Update shift to pending_payment status
+        setShifts(prevShifts => 
+          prevShifts.map(s => 
+            s.id === checkoutShiftId 
+              ? { ...s, roster_status: 'pending_payment', payout_amount, beneficiaries_served: parseInt(beneficiariesCount) } 
+              : s
+          )
+        );
+        
+        setAvailableShifts(prevShifts => 
+          prevShifts.map(s => 
+            s.id === checkoutShiftId 
+              ? { ...s, roster_status: 'pending_payment', payout_amount, beneficiaries_served: parseInt(beneficiariesCount) } 
+              : s
+          )
+        );
+        
         setShowCheckoutModal(false);
         setCheckoutShiftId(null);
-        setBeneficiariesCount('');
-        fetchMyShifts();
+        setBeneficiariesCount(0);
+        
+        // Switch to Pending Payment tab
+        setActiveTab('pending');
       }
     } catch (err) {
       toast.error(err.response?.data?.error || 'Failed to check out');
@@ -227,7 +256,8 @@ const MyShifts = () => {
       if (response.status === 200 || response.status === 201) {
         toast.success('Successfully registered for shift!');
         
-        // Update local state immediately to show Check In button
+        // OPTIMISTIC UI UPDATE ONLY - DO NOT RE-FETCH
+        // Update both availableShifts and shifts to keep state consistent
         setAvailableShifts(prevShifts => 
           prevShifts.map(s => 
             s.id === shiftId 
@@ -235,17 +265,24 @@ const MyShifts = () => {
               : s
           )
         );
-        setShifts(prevShifts => [
-          ...prevShifts,
-          { ...availableShifts.find(s => s.id === shiftId), roster_status: 'registered' }
-        ]);
+        
+        setShifts(prevShifts => {
+          const existing = prevShifts.find(s => s.id === shiftId);
+          const shiftData = availableShifts.find(s => s.id === shiftId);
+          
+          if (existing) {
+            return prevShifts.map(s => 
+              s.id === shiftId 
+                ? { ...s, roster_status: 'registered', volunteers_signed_up: (s.volunteers_signed_up || 0) + 1 } 
+                : s
+            );
+          } else {
+            return [...prevShifts, { ...shiftData, roster_status: 'registered', volunteers_signed_up: (shiftData.volunteers_signed_up || 0) + 1 }];
+          }
+        });
         
         // Stay on available tab to show Check In button
         setActiveTab('available');
-        
-        // Refresh data from server
-        fetchMyShifts();
-        fetchAvailableShifts();
       }
     } catch (err) {
       toast.error(err.response?.data?.error || 'Failed to register for shift');
@@ -421,50 +458,50 @@ const MyShifts = () => {
             ) : (
               <ul className="divide-y divide-gray-200">
                 {availableShifts.map((shift) => {
-                  // DEBUG: Log shift status for troubleshooting
-                  console.log('Shift Status:', shift.id, shift.roster_status);
+                  // DEBUGGING: Log shift status for troubleshooting
+                  console.log("Shift:", shift.id, "Roster Status:", shift.roster_status, "Is Funded:", shift.is_funded);
                   
-                  // FAIL-SAFE STATE MACHINE LOGIC
+                  // STRICT STATE MACHINE LOGIC - DO NOT GUESS
                   const renderActionButton = () => {
-                    // IF roster_status is 'registered' or 'upcoming' -> Show GREEN "Check In" button
-                    if (shift.roster_status === 'registered' || shift.roster_status === 'upcoming') {
+                    // STEP 4: If roster_status === 'completed' OR is_paid === true -> Show Paid/Completed Badge
+                    if (shift.roster_status === 'completed' || shift.is_paid === true) {
                       return (
-                        <button
-                          onClick={() => handleCheckIn(shift.id)}
-                          className="flex-1 sm:flex-none px-3 sm:px-4 py-2 bg-green-600 text-white text-xs sm:text-sm rounded hover:bg-green-700"
-                        >
-                          Check In
-                        </button>
+                        <span className="flex-1 sm:flex-none px-3 sm:px-4 py-2 bg-green-100 text-green-800 text-xs sm:text-sm rounded text-center font-semibold">
+                          ✓ Paid/Completed
+                        </span>
                       );
                     }
                     
-                    // IF roster_status is 'checked_in' -> Show ORANGE "Check Out" button
+                    // STEP 3: If roster_status === 'checked_in' -> Show ORANGE "Check Out" button
                     if (shift.roster_status === 'checked_in') {
                       return (
                         <button
                           onClick={() => openCheckoutModal(shift.id)}
-                          className="flex-1 sm:flex-none px-3 sm:px-4 py-2 bg-orange-600 text-white text-xs sm:text-sm rounded hover:bg-orange-700"
+                          className="flex-1 sm:flex-none px-3 sm:px-4 py-2 bg-orange-600 text-white text-xs sm:text-sm rounded hover:bg-orange-700 font-medium"
                         >
                           Check Out
                         </button>
                       );
                     }
                     
-                    // IF roster_status is 'completed' -> Show GRAY "Completed" badge
-                    if (shift.roster_status === 'completed') {
+                    // STEP 2: If roster_status === 'registered' -> Show GREEN "Check In" button
+                    if (shift.roster_status === 'registered') {
                       return (
-                        <span className="flex-1 sm:flex-none px-3 sm:px-4 py-2 bg-gray-400 text-white text-xs sm:text-sm rounded text-center">
-                          Completed
-                        </span>
+                        <button
+                          onClick={() => handleCheckIn(shift.id)}
+                          className="flex-1 sm:flex-none px-3 sm:px-4 py-2 bg-green-600 text-white text-xs sm:text-sm rounded hover:bg-green-700 font-medium"
+                        >
+                          Check In
+                        </button>
                       );
                     }
                     
-                    // DEFAULT (null/undefined roster_status) -> Show BLUE "Register" button
+                    // STEP 1: If NOT in roster (!roster_status) -> Show BLUE "Register" button
                     return (
                       <button
                         onClick={() => handleRegisterForShift(shift.id)}
                         disabled={!shift.is_funded}
-                        className={`flex-1 sm:flex-none px-3 sm:px-4 py-2 text-xs sm:text-sm rounded ${
+                        className={`flex-1 sm:flex-none px-3 sm:px-4 py-2 text-xs sm:text-sm rounded font-medium ${
                           shift.is_funded
                             ? 'bg-blue-600 text-white hover:bg-blue-700'
                             : 'bg-gray-300 text-gray-500 cursor-not-allowed'
@@ -541,7 +578,11 @@ const MyShifts = () => {
             </div>
           ) : (
             <ul className="divide-y divide-gray-200">
-              {filteredShifts.map((shift) => (
+              {filteredShifts.map((shift) => {
+                // DEBUGGING: Log shift status for troubleshooting
+                console.log("Shift (Other Tabs):", shift.id, "Roster Status:", shift.roster_status, "Tab:", activeTab);
+                
+                return (
                 <li key={shift.id} className="px-6 py-4 hover:bg-gray-50">
                   <div className="flex items-center justify-between">
                     <div className="flex-1">
@@ -649,7 +690,8 @@ const MyShifts = () => {
                     </div>
                   </div>
                 </li>
-              ))}
+                );
+              })}
             </ul>
           )}
         </div>
@@ -718,7 +760,7 @@ const MyShifts = () => {
 
         {/* Checkout Modal */}
         {showCheckoutModal && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[9999]">
             <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-md">
               <h3 className="text-xl font-bold text-gray-800 mb-4">Check Out</h3>
               <p className="text-gray-600 mb-4">How many beneficiaries did you serve during this shift?</p>
@@ -728,18 +770,22 @@ const MyShifts = () => {
                 value={beneficiariesCount}
                 onChange={(e) => setBeneficiariesCount(e.target.value)}
                 placeholder="Enter number of beneficiaries"
-                className="w-full px-3 py-2 border border-gray-300 rounded-md mb-4"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md mb-4 focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                autoFocus
               />
               <div className="flex space-x-3">
                 <button
-                  onClick={() => setShowCheckoutModal(false)}
+                  onClick={() => {
+                    setShowCheckoutModal(false);
+                    setBeneficiariesCount('');
+                  }}
                   className="flex-1 px-4 py-2 border border-gray-300 rounded-md hover:bg-gray-50"
                 >
                   Cancel
                 </button>
                 <button
                   onClick={handleCheckOut}
-                  className="flex-1 bg-green-600 text-white py-2 px-4 rounded-md hover:bg-green-700"
+                  className="flex-1 bg-green-600 text-white py-2 px-4 rounded-md hover:bg-green-700 font-medium"
                 >
                   Complete Checkout
                 </button>
@@ -750,7 +796,7 @@ const MyShifts = () => {
 
         {/* Shift Details Modal */}
         {showShiftDetails && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[9999]">
             <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-lg">
               <div className="flex justify-between items-start mb-4">
                 <h3 className="text-xl font-bold text-gray-800">{showShiftDetails.title}</h3>
