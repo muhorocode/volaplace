@@ -10,10 +10,35 @@ export default function Login() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [isLocked, setIsLocked] = useState(false);
+  const [lockoutTime, setLockoutTime] = useState(null);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
+
+    // Check if account is locked
+    const lockoutKey = `lockout_${email}`;
+    const attemptsKey = `attempts_${email}`;
+    const lockoutData = localStorage.getItem(lockoutKey);
+    
+    if (lockoutData) {
+      const lockoutUntil = new Date(lockoutData);
+      const now = new Date();
+      
+      if (now < lockoutUntil) {
+        const minutesLeft = Math.ceil((lockoutUntil - now) / 60000);
+        setError(`Too many failed attempts. Please try again in ${minutesLeft} minute(s).`);
+        setIsLocked(true);
+        setLockoutTime(lockoutUntil);
+        return;
+      } else {
+        // Lockout expired
+        localStorage.removeItem(lockoutKey);
+        localStorage.removeItem(attemptsKey);
+        setIsLocked(false);
+      }
+    }
 
     if (!email || !password) {
       setError('Please fill in all fields');
@@ -34,6 +59,12 @@ export default function Login() {
       const data = await response.json();
 
       if (response.ok) {
+        // Clear form and attempts on success
+        setEmail('');
+        setPassword('');
+        localStorage.removeItem(attemptsKey);
+        localStorage.removeItem(lockoutKey);
+        
         // Save token and user info
         localStorage.setItem('token', data.access_token);
         localStorage.setItem('user', JSON.stringify(data.user));
@@ -45,10 +76,29 @@ export default function Login() {
           navigate('/volunteer/shifts');
         }
       } else {
-        setError(data.error || 'Login failed');
+        // Track failed attempts
+        const attempts = parseInt(localStorage.getItem(attemptsKey) || '0') + 1;
+        localStorage.setItem(attemptsKey, attempts.toString());
+        
+        if (attempts >= 3) {
+          // Lock account for 15 minutes
+          const lockoutUntil = new Date(Date.now() + 15 * 60 * 1000);
+          localStorage.setItem(lockoutKey, lockoutUntil.toISOString());
+          setError('Too many failed attempts. Account locked for 15 minutes.');
+          setIsLocked(true);
+          setLockoutTime(lockoutUntil);
+          // Clear form
+          setEmail('');
+          setPassword('');
+        } else {
+          setError(data.error || `Login failed. ${3 - attempts} attempt(s) remaining.`);
+          // Clear password only
+          setPassword('');
+        }
       }
     } catch (err) {
       setError('Unable to connect to server. Please try again.');
+      setPassword('');
     } finally {
       setLoading(false);
     }

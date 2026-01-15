@@ -91,13 +91,13 @@ export default function Home() {
       </section>
 
       {/* Map Section */}
-      <section className="max-w-7xl mx-auto px-4 -mt-4 sm:-mt-6">
-        <div className="bg-white rounded-xl shadow-lg overflow-hidden">
+      <section className="flex-1 max-w-7xl mx-auto px-4 -mt-4 sm:-mt-6">
+        <div className="bg-white rounded-xl shadow-lg overflow-hidden h-full">
           <div className="p-3 sm:p-4 border-b bg-gray-50">
             <h3 className="text-sm sm:text-base font-semibold text-gray-800">Available Shifts Near You</h3>
             <p className="text-xs sm:text-sm text-gray-500">Click on a marker to see shift details</p>
           </div>
-          <div className="h-[300px] sm:h-[400px] md:h-[500px]">
+          <div className="h-[400px] sm:h-[500px] md:h-[600px]">
             <SearchMap 
               userLocation={userLocation}
               onShiftSelect={(shift) => {

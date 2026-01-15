@@ -9,10 +9,27 @@ from app.config import db
 bp = Blueprint('projects', __name__)
 
 @bp.route('', methods=['GET'])
+@jwt_required()
 def get_projects():
-    """Get all projects"""
+    """Get all projects - filtered by user role"""
     try:
-        projects = Project.query.all()
+        user_id = int(get_jwt_identity())
+        user = User.query.get(user_id)
+        
+        if user.role == 'admin':
+            # Admin can see all projects
+            projects = Project.query.all()
+        elif user.role == 'org_admin':
+            # Org admin only sees their organization's projects
+            org = Organization.query.filter_by(user_id=user_id).first()
+            if org:
+                projects = org.projects
+            else:
+                projects = []
+        else:
+            # Volunteers can see all projects (for browsing shifts)
+            projects = Project.query.all()
+            
         return jsonify([{
             'id': p.id,
             'name': p.name,

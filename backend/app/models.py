@@ -120,6 +120,10 @@ class Shift(db.Model, SerializerMixin):
             "end_time": self.end_time.strftime("%H:%M") if self.end_time else None,
             "max_volunteers": self.max_volunteers,
             "status": self.status,
+            # Funding fields
+            "is_funded": self.is_funded or False,
+            "funded_amount": self.funded_amount or 0.0,
+            "funding_transaction_id": self.funding_transaction_id,
             
             "project": {
                 "name": self.project.name,

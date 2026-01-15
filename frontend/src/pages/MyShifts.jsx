@@ -132,6 +132,7 @@ const MyShifts = () => {
       if (response.status === 200) {
         toast.success('Checked in successfully!');
         fetchMyShifts();
+        setActiveTab('inprogress');
       }
     } catch (err) {
       toast.error(err.response?.data?.error || 'Failed to check in');
@@ -202,7 +203,8 @@ const MyShifts = () => {
         toast.success('Successfully registered for shift!');
         fetchMyShifts();
         fetchAvailableShifts();
-        setActiveTab('upcoming');
+        // Stay on available tab to show Check In button
+        setActiveTab('available');
       }
     } catch (err) {
       toast.error(err.response?.data?.error || 'Failed to register for shift');

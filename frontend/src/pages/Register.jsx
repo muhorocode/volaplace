@@ -46,14 +46,19 @@ export default function Register() {
 
       if (response.ok) {
         setSuccess('Account created successfully! Redirecting to login...');
+        // Clear form\n        setForm({ name: '', email: '', password: '', phone: '', role: 'volunteer' });
         setTimeout(() => {
           navigate('/login');
         }, 2000);
       } else {
         setError(data.error || 'Registration failed');
+        // Clear password on failure
+        setForm({ ...form, password: '' });
       }
     } catch (err) {
       setError('Unable to connect to server. Please try again.');
+      // Clear password on error
+      setForm({ ...form, password: '' });
     } finally {
       setLoading(false);
     }

@@ -49,6 +49,7 @@ const SearchMap = ({ onShiftSelect, userLocation }) => {
         params.lon = userLocation.longitude;
       }
 
+      // Use public endpoint without auth for homepage
       const response = await axios.get(
         `${API_URL}/api/shifts`,
         { params }
@@ -56,7 +57,15 @@ const SearchMap = ({ onShiftSelect, userLocation }) => {
       
       // Handle both array response and object with shifts property
       const shiftsData = Array.isArray(response.data) ? response.data : (response.data.shifts || response.data || []);
-      setShifts(shiftsData);
+      
+      // Filter to show only upcoming shifts with available spots
+      const availableShifts = shiftsData.filter(s => 
+        s.status === 'upcoming' && 
+        s.is_funded && 
+        (s.volunteers_signed_up || 0) < s.max_volunteers
+      );
+      
+      setShifts(availableShifts);
     } catch (err) {
       console.error('Error fetching shifts:', err);
       setShifts([]);
@@ -65,11 +74,26 @@ const SearchMap = ({ onShiftSelect, userLocation }) => {
     }
   };
 
-  // Custom icons
-  const getShiftIcon = (shiftType) => {
-    const iconUrl = shiftType === 'active' 
-      ? 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-green.png'
-      : 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-blue.png';
+  // Custom icons - different colors for shift status
+  const getShiftIcon = (shift) => {
+    const now = new Date();
+    const shiftDate = new Date(shift.date);
+    const isPast = shiftDate < now;
+    
+    let iconUrl;
+    if (shift.status === 'completed' || isPast) {
+      // Gray for completed/past shifts
+      iconUrl = 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-grey.png';
+    } else if (shift.status === 'in_progress' || shift.status === 'checked_in') {
+      // Orange for in-progress
+      iconUrl = 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-orange.png';
+    } else if (shift.status === 'upcoming') {
+      // Green for upcoming/active
+      iconUrl = 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-green.png';
+    } else {
+      // Blue default
+      iconUrl = 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-blue.png';
+    }
     
     return new L.Icon({
       iconUrl,
@@ -138,7 +162,7 @@ const SearchMap = ({ onShiftSelect, userLocation }) => {
           <div key={shift.id}>
             <Marker
               position={[lat, lon]}
-              icon={getShiftIcon(shift.status)}
+              icon={getShiftIcon(shift)}
               eventHandlers={{
                 click: () => handleShiftClick(shift)
               }}
