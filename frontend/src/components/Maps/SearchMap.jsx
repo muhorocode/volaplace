@@ -49,6 +49,7 @@ const SearchMap = ({ onShiftSelect, userLocation }) => {
         params.lon = userLocation.longitude;
       }
 
+      // Use public endpoint without auth for homepage
       const response = await axios.get(
         `${API_URL}/api/shifts`,
         { params }
@@ -56,7 +57,15 @@ const SearchMap = ({ onShiftSelect, userLocation }) => {
       
       // Handle both array response and object with shifts property
       const shiftsData = Array.isArray(response.data) ? response.data : (response.data.shifts || response.data || []);
-      setShifts(shiftsData);
+      
+      // Filter to show only upcoming shifts with available spots
+      const availableShifts = shiftsData.filter(s => 
+        s.status === 'upcoming' && 
+        s.is_funded && 
+        (s.volunteers_signed_up || 0) < s.max_volunteers
+      );
+      
+      setShifts(availableShifts);
     } catch (err) {
       console.error('Error fetching shifts:', err);
       setShifts([]);
@@ -65,11 +74,35 @@ const SearchMap = ({ onShiftSelect, userLocation }) => {
     }
   };
 
-  // Custom icons
-  const getShiftIcon = (shiftType) => {
-    const iconUrl = shiftType === 'active' 
-      ? 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-green.png'
-      : 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-blue.png';
+  // Custom icons - different colors for shift status
+  // REQUIREMENT: User Location=RED, Active/In-Progress=GREEN, Upcoming=BLUE
+  const getShiftIcon = (shift) => {
+    const now = new Date();
+    const shiftDate = new Date(shift.date);
+    const isPast = shiftDate < now;
+    
+    // Check if shift is active/in-progress
+    const isActive = shift.status === 'in_progress' || 
+                     shift.status === 'checked_in' || 
+                     shift.status === 'active' ||
+                     shift.roster_status === 'checked_in';
+    
+    const isUpcoming = shift.status === 'upcoming';
+    
+    let iconUrl;
+    if (shift.status === 'completed' || isPast) {
+      // Gray for completed/past shifts
+      iconUrl = 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-grey.png';
+    } else if (isActive) {
+      // GREEN for active/in-progress shifts
+      iconUrl = 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-green.png';
+    } else if (isUpcoming) {
+      // BLUE for upcoming shifts
+      iconUrl = 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-blue.png';
+    } else {
+      // Blue default
+      iconUrl = 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-blue.png';
+    }
     
     return new L.Icon({
       iconUrl,
@@ -87,20 +120,33 @@ const SearchMap = ({ onShiftSelect, userLocation }) => {
     }
   };
 
+  const handleViewDetails = (shift) => {
+    const token = localStorage.getItem('token');
+    
+    if (token) {
+      // User is logged in - navigate to shift details/register page
+      window.location.href = `/volunteer/shifts?shiftId=${shift.id}`;
+    } else {
+      // User is logged out - save intended destination and redirect to login
+      localStorage.setItem('redirect_after_login', `/volunteer/shifts?shiftId=${shift.id}`);
+      window.location.href = '/login';
+    }
+  };
+
   if (loading) {
     return (
-      <div className="h-96 w-full flex items-center justify-center bg-gray-100 rounded-lg">
+      <div className="h-full w-full flex items-center justify-center bg-gray-100">
         <div className="text-lg text-gray-600">Loading map...</div>
       </div>
     );
   }
 
   return (
-    <div className="relative w-full h-96 rounded-lg overflow-hidden shadow-lg">
+    <div className="relative w-full h-full z-0">
       <MapContainer
         center={mapCenter}
         zoom={13}
-        className="h-full w-full"
+        className="h-full w-full z-0"
         ref={mapRef}
       >
         <TileLayer
@@ -138,7 +184,7 @@ const SearchMap = ({ onShiftSelect, userLocation }) => {
           <div key={shift.id}>
             <Marker
               position={[lat, lon]}
-              icon={getShiftIcon(shift.status)}
+              icon={getShiftIcon(shift)}
               eventHandlers={{
                 click: () => handleShiftClick(shift)
               }}
@@ -164,7 +210,7 @@ const SearchMap = ({ onShiftSelect, userLocation }) => {
                     )}
                   </div>
                   <button
-                    onClick={() => handleShiftClick(shift)}
+                    onClick={() => handleViewDetails(shift)}
                     className="mt-3 w-full bg-blue-600 text-white py-1 px-3 rounded hover:bg-blue-700 text-sm"
                   >
                     View Details

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import axios from 'axios';
 import toast, { Toaster } from 'react-hot-toast';
+import Footer from '../components/Footer';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
@@ -11,6 +12,7 @@ export default function AdminDashboard() {
   const [stats, setStats] = useState(null);
   const [rules, setRules] = useState(null);
   const [transactions, setTransactions] = useState([]);
+  const [pendingPayments, setPendingPayments] = useState([]);
   const [editingRules, setEditingRules] = useState(false);
   const [formData, setFormData] = useState({
     base_hourly_rate: '',
@@ -30,10 +32,11 @@ export default function AdminDashboard() {
       const headers = { Authorization: `Bearer ${token}` };
 
       // Fetch all admin data
-      const [statsRes, rulesRes, transactionsRes] = await Promise.all([
+      const [statsRes, rulesRes, transactionsRes, pendingRes] = await Promise.all([
         axios.get(`${API_URL}/api/admin/dashboard-stats`, { headers }),
         axios.get(`${API_URL}/api/admin/global-rules`, { headers }),
-        axios.get(`${API_URL}/api/admin/transactions?per_page=20`, { headers })
+        axios.get(`${API_URL}/api/admin/transactions?per_page=20`, { headers }),
+        axios.get(`${API_URL}/api/admin/pending-payments`, { headers })
       ]);
 
       setStats(statsRes.data.summary);
@@ -43,10 +46,40 @@ export default function AdminDashboard() {
         bonus_per_beneficiary: rulesRes.data.rules.bonus_per_beneficiary
       });
       setTransactions(transactionsRes.data.transactions);
+      setPendingPayments(pendingRes.data.pending_payments || []);
     } catch (err) {
       setError(err.response?.data?.error || 'Failed to load dashboard data');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleApprovePayment = async (rosterId, volunteerName, amount) => {
+    if (!confirm(`Approve payment of KES ${amount} to ${volunteerName}?`)) {
+      return;
+    }
+
+    try {
+      const token = localStorage.getItem('token');
+      const response = await axios.post(
+        `${API_URL}/api/admin/approve-payment/${rosterId}`,
+        {},
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+
+      toast.success(`Payment approved: KES ${amount} to ${volunteerName}`, {
+        duration: 4000,
+        position: 'top-right',
+      });
+      
+      // Refresh data
+      fetchDashboardData();
+    } catch (err) {
+      const errorMsg = err.response?.data?.error || 'Failed to approve payment';
+      toast.error(`❌ ${errorMsg}`, {
+        duration: 5000,
+        position: 'top-right',
+      });
     }
   };
 
@@ -91,13 +124,13 @@ export default function AdminDashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8">
+    <div className="min-h-screen bg-gray-50 flex flex-col py-8">
       <Toaster />
-      <div className="max-w-7xl mx-auto px-4">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">Admin Dashboard</h1>
-          <p className="text-gray-600 mt-2">Platform-wide analytics and configuration</p>
+        <div className="mb-6 sm:mb-8">
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Admin Dashboard</h1>
+          <p className="text-sm sm:text-base text-gray-600 mt-2">Platform-wide analytics and configuration</p>
         </div>
 
         {/* Alerts */}
@@ -254,6 +287,87 @@ export default function AdminDashboard() {
           )}
         </div>
 
+        {/* Pending Payment Approvals */}
+        <div className="bg-white rounded-lg shadow-md p-6">
+          <h2 className="text-xl font-bold text-gray-900 mb-4">Pending Payment Approvals</h2>
+          <p className="text-gray-600 mb-4">
+            Volunteers waiting for payment approval ({pendingPayments.length})
+          </p>
+
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Volunteer</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Shift</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Hours</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Beneficiaries</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Amount</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Action</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-200">
+                {pendingPayments.length === 0 ? (
+                  <tr>
+                    <td colSpan="6" className="px-4 py-8 text-center text-gray-500">
+                      No pending payments
+                    </td>
+                  </tr>
+                ) : (
+                  pendingPayments.map((payment) => {
+                    const checkIn = payment.check_in_time ? new Date(payment.check_in_time) : null;
+                    const checkOut = payment.check_out_time ? new Date(payment.check_out_time) : null;
+                    const hours = checkIn && checkOut ? 
+                      ((checkOut - checkIn) / (1000 * 60 * 60)).toFixed(1) : 'N/A';
+
+                    return (
+                      <tr key={payment.id} className="hover:bg-gray-50">
+                        <td className="px-4 py-3">
+                          <div className="text-sm font-medium text-gray-900">{payment.volunteer_name}</div>
+                          <div className="text-xs text-gray-500">{payment.volunteer_phone}</div>
+                        </td>
+                        <td className="px-4 py-3 text-sm text-gray-900">{payment.shift_title}</td>
+                        <td className="px-4 py-3 text-sm text-gray-600">{hours} hrs</td>
+                        <td className="px-4 py-3 text-sm text-gray-600">{payment.beneficiaries_served || 0}</td>
+                        <td className="px-4 py-3">
+                          <div className="text-sm font-semibold text-gray-900">
+                            KES {payment.payout_amount?.toFixed(2) || '0.00'}
+                          </div>
+                          <div className="text-xs text-gray-500">
+                            Shift budget: KES {payment.shift_funded_amount?.toFixed(2) || '0.00'}
+                          </div>
+                        </td>
+                        <td className="px-4 py-3">
+                          <button
+                            onClick={() => handleApprovePayment(
+                              payment.id,
+                              payment.volunteer_name,
+                              payment.payout_amount
+                            )}
+                            disabled={!payment.shift_funded_amount || payment.shift_funded_amount < payment.payout_amount}
+                            className={`px-4 py-2 text-sm font-medium rounded-lg transition ${
+                              payment.shift_funded_amount >= payment.payout_amount
+                                ? 'bg-green-600 text-white hover:bg-green-700'
+                                : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                            }`}
+                            title={
+                              payment.shift_funded_amount < payment.payout_amount
+                                ? 'Insufficient shift funds'
+                                : 'Approve payment'
+                            }
+                          >
+                            {payment.shift_funded_amount >= payment.payout_amount ? 'Approve' : 'Insufficient Funds'}
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
         {/* Transaction Reconciliation */}
         <div className="bg-white rounded-lg shadow-md p-6">
           <h2 className="text-xl font-bold text-gray-900 mb-4">Payment Reconciliation</h2>
@@ -303,6 +417,8 @@ export default function AdminDashboard() {
           </div>
         </div>
       </div>
+      
+      <Footer />
     </div>
   );
 }

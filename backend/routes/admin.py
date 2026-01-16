@@ -165,3 +165,111 @@ def get_all_transactions():
             "pages": pagination.pages
         }
     }), 200
+
+
+@admin_bp.route('/pending-payments', methods=['GET'])
+@jwt_required()
+def get_pending_payments():
+    """Get all pending payment approvals"""
+    error_response = admin_required()
+    if error_response:
+        return error_response
+    
+    from app.models import ShiftRoster, Shift
+    
+    # Get all shift roster entries with pending_payment status
+    pending = ShiftRoster.query.filter_by(
+        status='pending_payment',
+        is_paid=False
+    ).all()
+    
+    payments = []
+    for entry in pending:
+        volunteer = User.query.get(entry.volunteer_id)
+        shift = Shift.query.get(entry.shift_id)
+        
+        if volunteer and shift:
+            payments.append({
+                'id': entry.id,
+                'volunteer_id': volunteer.id,
+                'volunteer_name': volunteer.name,
+                'volunteer_phone': volunteer.phone,
+                'shift_id': shift.id,
+                'shift_title': shift.title,
+                'check_in_time': entry.check_in_time.isoformat() if entry.check_in_time else None,
+                'check_out_time': entry.check_out_time.isoformat() if entry.check_out_time else None,
+                'beneficiaries_served': entry.beneficiaries_served,
+                'payout_amount': entry.payout_amount,
+                'shift_funded_amount': shift.funded_amount if hasattr(shift, 'funded_amount') else 0
+            })
+    
+    return jsonify({
+        'pending_payments': payments,
+        'total': len(payments)
+    }), 200
+
+
+@admin_bp.route('/approve-payment/<int:roster_id>', methods=['POST'])
+@jwt_required()
+def approve_payment(roster_id):
+    """Approve a pending payment"""
+    error_response = admin_required()
+    if error_response:
+        return error_response
+    
+    from app.models import ShiftRoster, Shift, TransactionLog
+    from datetime import datetime
+    
+    roster_entry = ShiftRoster.query.get(roster_id)
+    if not roster_entry:
+        return jsonify({'error': 'Roster entry not found'}), 404
+    
+    if roster_entry.status != 'pending_payment':
+        return jsonify({'error': 'Payment not in pending status'}), 400
+    
+    if roster_entry.is_paid:
+        return jsonify({'error': 'Payment already processed'}), 400
+    
+    shift = Shift.query.get(roster_entry.shift_id)
+    volunteer = User.query.get(roster_entry.volunteer_id)
+    
+    if not shift or not volunteer:
+        return jsonify({'error': 'Shift or volunteer not found'}), 404
+    
+    # Check if shift has sufficient funding
+    is_funded = getattr(shift, 'is_funded', False)
+    funded_amount = getattr(shift, 'funded_amount', 0) or 0
+    payout_amount = roster_entry.payout_amount or 0
+    
+    if not is_funded or funded_amount < payout_amount:
+        return jsonify({
+            'error': f'Insufficient funds. Shift has KES {funded_amount}, needs KES {payout_amount}'
+        }), 400
+    
+    # Process payment
+    shift.funded_amount = funded_amount - payout_amount
+    if shift.funded_amount <= 0:
+        shift.is_funded = False
+    
+    roster_entry.is_paid = True
+    roster_entry.paid_at = datetime.utcnow()
+    roster_entry.status = 'completed'
+    
+    # Create transaction log
+    transaction = TransactionLog(
+        volunteer_id=volunteer.id,
+        shift_roster_id=roster_entry.id,
+        amount=payout_amount,
+        status='completed',
+        phone=volunteer.phone or 'N/A'
+    )
+    db.session.add(transaction)
+    
+    db.session.commit()
+    
+    return jsonify({
+        'message': 'Payment approved successfully',
+        'volunteer_name': volunteer.name,
+        'amount_paid': payout_amount,
+        'shift_remaining_budget': shift.funded_amount
+    }), 200

@@ -26,6 +26,11 @@ const ShiftManager = ({ projects }) => {
   const [fundingShift, setFundingShift] = useState(null);
   const [fundAmount, setFundAmount] = useState(5000);
   const [isFunding, setIsFunding] = useState(false);
+  const [useCustomPhone, setUseCustomPhone] = useState(false);
+  const [customPhone, setCustomPhone] = useState('');
+  
+  // Get user info for phone display
+  const user = JSON.parse(localStorage.getItem('user') || '{}');
 
   useEffect(() => {
     if (projects.length > 0 && !formData.project_id) {
@@ -128,18 +133,43 @@ const ShiftManager = ({ projects }) => {
 
   const handleFundShift = async (useDemo = false) => {
     if (!fundingShift) return;
+    
+    // Determine which phone to use
+    const phoneToUse = useCustomPhone ? customPhone : user.phone;
+    
+    // Validate phone format for real M-Pesa only (skip for demo)
+    if (!useDemo) {
+      if (!phoneToUse || !/^254\d{9}$/.test(phoneToUse)) {
+        toast.error('Invalid phone number format. Use 254XXXXXXXXX');
+        return;
+      }
+    }
+    
+    // Validate amount
+    if (!fundAmount || parseFloat(fundAmount) <= 0) {
+      toast.error('Please enter a valid amount greater than 0');
+      return;
+    }
+    
     setIsFunding(true);
     
     try {
       const token = localStorage.getItem('token');
       const endpoint = useDemo ? '/api/payments/fund-shift-demo' : '/api/payments/fund-shift';
       
+      const payload = {
+        shift_id: fundingShift.id,
+        amount: parseFloat(fundAmount)
+      };
+      
+      // Only include phone for real M-Pesa
+      if (!useDemo) {
+        payload.phone = phoneToUse;
+      }
+      
       const response = await axios.post(
         `${API_URL}${endpoint}`,
-        {
-          shift_id: fundingShift.id,
-          amount: fundAmount
-        },
+        payload,
         {
           headers: {
             'Authorization': `Bearer ${token}`
@@ -151,6 +181,9 @@ const ShiftManager = ({ projects }) => {
         toast.success(response.data.message);
         setShowFundModal(false);
         setFundingShift(null);
+        setFundAmount('');
+        setUseCustomPhone(false);
+        setCustomPhone('');
         fetchShifts();
       }
     } catch (err) {
@@ -590,33 +623,102 @@ const ShiftManager = ({ projects }) => {
               <p className="text-xs text-gray-500 mt-1">
                 Minimum: KES 100. This amount will be added to the shift budget to pay volunteers.
               </p>
-            </div>
-            
+            </div>            
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                M-Pesa Phone Number
+              </label>
+              <div className="space-y-2">
+                <div className="flex items-center space-x-2">
+                  <input
+                    type="radio"
+                    id="useRegisteredPhone"
+                    name="phoneChoice"
+                    checked={!useCustomPhone}
+                    onChange={() => setUseCustomPhone(false)}
+                    className="w-4 h-4 text-blue-600"
+                  />
+                  <label htmlFor="useRegisteredPhone" className="text-sm text-gray-700">
+                    Use registered number: <span className="font-mono font-semibold">{user?.phone || '254XXXXXXXXX'}</span>
+                  </label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <input
+                    type="radio"
+                    id="useCustomPhone"
+                    name="phoneChoice"
+                    checked={useCustomPhone}
+                    onChange={() => setUseCustomPhone(true)}
+                    className="w-4 h-4 text-blue-600"
+                  />
+                  <label htmlFor="useCustomPhone" className="text-sm text-gray-700">
+                    Use a different number
+                  </label>
+                </div>
+                {useCustomPhone && (
+                  <input
+                    type="tel"
+                    value={customPhone}
+                    onChange={(e) => setCustomPhone(e.target.value)}
+                    placeholder="254712345678"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                    pattern="254[0-9]{9}"
+                  />
+                )}
+              </div>
+              <p className="text-xs text-gray-500 mt-1">
+                The M-Pesa STK push will be sent to this number.
+              </p>
+            </div>            
             <div className="bg-blue-50 p-3 rounded-md mb-4">
               <p className="text-sm text-blue-800">
                 <strong>How it works:</strong> You'll receive an M-Pesa prompt on your phone to deposit funds. Once confirmed, volunteers can receive payments from this shift's budget when they check out.
+              </p>
+            </div>
+
+            {/* Demo Mode Notice */}
+            <div className="bg-blue-50 border border-blue-200 p-3 rounded-md mb-4">
+              <p className="text-sm text-blue-800">
+                <strong>💡 Alternative Funding Available:</strong> If M-Pesa services are unavailable, use <strong>Demo Mode</strong> as a backup to fund shifts instantly!
               </p>
             </div>
             
             <div className="flex flex-col space-y-3">
               <button
                 onClick={() => handleFundShift(false)}
-                disabled={isFunding || fundAmount < 100}
-                className="w-full bg-green-600 text-white py-2 px-4 rounded-md hover:bg-green-700 disabled:opacity-50"
+                disabled={isFunding || !fundAmount || fundAmount < 100}
+                className="w-full bg-green-600 text-white py-3 px-4 rounded-md hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed font-medium"
               >
-                {isFunding ? 'Processing...' : `Fund with M-Pesa (KES ${fundAmount.toLocaleString()})`}
+                {isFunding ? '⏳ Processing...' : `💳 Fund with M-Pesa (KES ${fundAmount ? parseFloat(fundAmount).toLocaleString() : '0'})`}
               </button>
+              
+              <div className="relative">
+                <div className="absolute inset-0 flex items-center">
+                  <div className="w-full border-t border-gray-300"></div>
+                </div>
+                <div className="relative flex justify-center text-xs uppercase">
+                  <span className="bg-white px-2 text-gray-500">OR</span>
+                </div>
+              </div>
+
               <button
                 onClick={() => handleFundShift(true)}
-                disabled={isFunding || fundAmount < 100}
-                className="w-full bg-gray-600 text-white py-2 px-4 rounded-md hover:bg-gray-700 disabled:opacity-50"
+                disabled={isFunding || !fundAmount || fundAmount < 100}
+                className="w-full bg-yellow-500 text-white py-3 px-4 rounded-md hover:bg-yellow-600 disabled:opacity-50 disabled:cursor-not-allowed font-medium"
               >
-                {isFunding ? 'Processing...' : 'Demo Mode (Skip M-Pesa)'}
+                {isFunding ? '⏳ Processing...' : `🧪 Fund with Demo Mode (KES ${fundAmount ? parseFloat(fundAmount).toLocaleString() : '0'})`}
               </button>
+              
               <button
                 type="button"
-                onClick={() => setShowFundModal(false)}
+                onClick={() => {
+                  setShowFundModal(false);
+                  setFundAmount('');
+                  setUseCustomPhone(false);
+                  setCustomPhone('');
+                }}
                 className="w-full px-4 py-2 border border-gray-300 rounded-md hover:bg-gray-50"
+                disabled={isFunding}
               >
                 Cancel
               </button>

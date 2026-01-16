@@ -1,10 +1,12 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import toast, { Toaster } from 'react-hot-toast';
 import { useAuth } from '../contexts/AuthContext';
 import CreateProject from '../components/Org/CreateProject';
 import ShiftManager from '../components/Org/ShiftManager';
+import ProfileUpdate from '../components/ProfileUpdate';
+import Footer from '../components/Footer';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
@@ -17,6 +19,7 @@ const OrgDashboard = () => {
   const [shiftsLoading, setShiftsLoading] = useState(false);
   const navigate = useNavigate();
   const { user } = useAuth();
+  const shiftsRef = useRef(null);
 
   useEffect(() => {
     // Check if user is organization admin
@@ -113,27 +116,27 @@ const OrgDashboard = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 flex flex-col">
       <Toaster position="top-right" />
       {/* Header */}
       <header className="bg-white shadow">
-        <div className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
-          <h1 className="text-3xl font-bold text-gray-900">
+        <div className="max-w-7xl mx-auto py-4 sm:py-6 px-4 sm:px-6 lg:px-8">
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">
             Organization Dashboard
           </h1>
-          <p className="text-gray-600 mt-2">
+          <p className="text-sm sm:text-base text-gray-600 mt-2">
             Manage your projects and volunteer shifts
           </p>
         </div>
       </header>
 
-      <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
+      <main className="flex-1 max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
         {/* Tabs */}
-        <div className="mb-6 border-b border-gray-200">
-          <nav className="-mb-px flex space-x-8">
+        <div className="mb-6 border-b border-gray-200 overflow-x-auto">
+          <nav className="-mb-px flex space-x-4 sm:space-x-8 min-w-max">
             <button
               onClick={() => setActiveTab('projects')}
-              className={`py-2 px-1 border-b-2 font-medium text-sm ${
+              className={`py-2 px-2 sm:px-1 border-b-2 font-medium text-sm whitespace-nowrap ${
                 activeTab === 'projects'
                   ? 'border-blue-500 text-blue-600'
                   : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
@@ -161,6 +164,16 @@ const OrgDashboard = () => {
             >
               Manage Shifts
             </button>
+            <button
+              onClick={() => setActiveTab('profile')}
+              className={`py-2 px-1 border-b-2 font-medium text-sm ${
+                activeTab === 'profile'
+                  ? 'border-blue-500 text-blue-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              }`}
+            >
+              Profile
+            </button>
           </nav>
         </div>
 
@@ -180,8 +193,8 @@ const OrgDashboard = () => {
             ) : (
               <ul className="divide-y divide-gray-200">
                 {projects.map((project) => (
-                  <li key={project.id} className="px-6 py-4 hover:bg-gray-50">
-                    <div className="flex items-center justify-between">
+                  <li key={project.id} className="px-4 sm:px-6 py-4 hover:bg-gray-50">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                       <div className="flex-1">
                         <h3 className="text-lg font-medium text-gray-900">
                           {project.name}
@@ -201,7 +214,7 @@ const OrgDashboard = () => {
                           </span>
                         </div>
                       </div>
-                      <div className="ml-4 flex space-x-2">
+                      <div className="flex space-x-2 sm:ml-4">
                         <button
                           onClick={() => handleViewShifts(project)}
                           className="inline-flex items-center px-3 py-1 border border-transparent text-sm leading-4 font-medium rounded-md text-blue-700 bg-blue-100 hover:bg-blue-200"
@@ -228,7 +241,13 @@ const OrgDashboard = () => {
         )}
 
         {activeTab === 'shifts' && (
-          <ShiftManager projects={projects} />
+          <div ref={shiftsRef}>
+            <ShiftManager projects={projects} />
+          </div>
+        )}
+
+        {activeTab === 'profile' && (
+          <ProfileUpdate />
         )}
       </main>
 
@@ -312,6 +331,9 @@ const OrgDashboard = () => {
                 onClick={() => {
                   closeShiftsModal();
                   setActiveTab('shifts');
+                  setTimeout(() => {
+                    shiftsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                  }, 100);
                 }}
                 className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
               >
@@ -321,6 +343,8 @@ const OrgDashboard = () => {
           </div>
         </div>
       )}
+
+      <Footer />
     </div>
   );
 };
