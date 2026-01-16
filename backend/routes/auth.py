@@ -6,6 +6,8 @@ from flask import Blueprint, request, jsonify
 from flask_jwt_extended import create_access_token, jwt_required, get_jwt_identity
 from app.models import User
 from app.config import db
+from utils.conflict_validation import validate_phone_unique
+import re
 
 bp = Blueprint('auth', __name__)
 
@@ -35,12 +37,18 @@ def register():
         if data['role'] not in valid_roles:
             return jsonify({"error": f"Invalid role. Must be one of: {', '.join(valid_roles)}"}), 400
         
+        # Validate phone format
+        if not re.match(r'^254\d{9}$', data['phone']):
+            return jsonify({"error": "Invalid phone format. Use 254XXXXXXXXX (e.g., 254712345678)"}), 400
+        
         # Prevent duplicate registrations
         if User.query.filter_by(email=data['email']).first():
             return jsonify({"error": "Email already registered"}), 409
         
-        if User.query.filter_by(phone=data['phone']).first():
-            return jsonify({"error": "Phone number already registered"}), 409
+        # Use validation utility for phone uniqueness
+        is_valid, error_msg = validate_phone_unique(data['phone'])
+        if not is_valid:
+            return jsonify({"error": error_msg}), 409
         
         # Create user with hashed password
         new_user = User(

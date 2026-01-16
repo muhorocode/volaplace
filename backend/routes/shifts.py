@@ -6,6 +6,7 @@ from flask_jwt_extended import jwt_required, get_jwt_identity
 from app.models import Shift, Project, Organization, User
 from app.config import db
 from datetime import datetime, time as dt_time
+from utils.conflict_validation import validate_shift_time_conflict, validate_volunteer_shift_limit
 
 bp = Blueprint('shifts', __name__)
 
@@ -77,23 +78,35 @@ def get_shifts():
     """Get all shifts - optionally filtered by project_id"""
     try:
         from datetime import datetime as dt, timedelta
+        from sqlalchemy.orm import joinedload
+        
         user_id = int(get_jwt_identity())
         user = User.query.get(user_id)
         
         project_id = request.args.get('project_id', type=int)
         
-        query = Shift.query
+        # Start with base query - EAGER LOAD roster to prevent N+1 queries
+        query = Shift.query.options(joinedload(Shift.roster))
         
-        # If user is org_admin, only show their organization's shifts
-        if user.role == 'org_admin':
+        # CRITICAL: Filter by specific project_id FIRST if provided
+        if project_id:
+            query = query.filter(Shift.project_id == project_id)
+            
+            # Additional security check for org_admin
+            if user.role == 'org_admin':
+                project = Project.query.get(project_id)
+                if project:
+                    org = Organization.query.filter_by(user_id=user_id).first()
+                    if org and project.org_id != org.id:
+                        # Unauthorized - return empty list
+                        return jsonify([]), 200
+        
+        # If no specific project requested, filter by user's organization
+        elif user.role == 'org_admin':
             org = Organization.query.filter_by(user_id=user_id).first()
             if org:
                 project_ids = [p.id for p in org.projects]
                 query = query.filter(Shift.project_id.in_(project_ids))
-        
-        # Filter by specific project if requested
-        if project_id:
-            query = query.filter_by(project_id=project_id)
         
         shifts = query.order_by(Shift.date.desc()).all()
         
@@ -133,19 +146,20 @@ def get_shifts():
                     'lon': s.project.lon,
                     'geofence_radius': s.project.geofence_radius
                 } if s.project else None,
-                'volunteers_signed_up': len(s.roster_entries) if s.roster_entries else 0,
-                # Funding fields
-                'is_funded': s.is_funded if hasattr(s, 'is_funded') else False,
-                'funded_amount': s.funded_amount if hasattr(s, 'funded_amount') else 0
+                'volunteers_signed_up': len(s.roster) if s.roster else 0,
+                # Funding fields - always include them since they exist on the model
+                'is_funded': s.is_funded or False,
+                'funded_amount': s.funded_amount or 0.0
             }
             
             # If user is a volunteer, include their roster entry status
+            # FIX: Use preloaded roster instead of new query (prevents N+1)
             if user.role == 'volunteer':
-                from app.models import ShiftRoster
-                roster_entry = ShiftRoster.query.filter_by(
-                    shift_id=s.id,
-                    volunteer_id=user_id
-                ).first()
+                # Find roster entry from already loaded data
+                roster_entry = next(
+                    (entry for entry in s.roster if entry.volunteer_id == user_id),
+                    None
+                )
                 
                 if roster_entry:
                     shift_data['roster_status'] = roster_entry.status
@@ -243,8 +257,14 @@ def delete_shift(shift_id):
         if org.user_id != user_id and user.role != 'admin':
             return jsonify({'error': 'Unauthorized'}), 403
         
+        # 🔴 CRITICAL SECURITY FIX: Prevent deleting funded shifts
+        if hasattr(shift, 'is_funded') and shift.is_funded and shift.funded_amount > 0:
+            return jsonify({
+                'error': f'Cannot delete funded shift. This shift has KES {shift.funded_amount:,.2f} in funding. Please refund first.'
+            }), 400
+        
         # Check if shift has volunteers assigned
-        if shift.roster_entries and len(shift.roster_entries) > 0:
+        if shift.roster and len(shift.roster) > 0:
             return jsonify({'error': 'Cannot delete shift with assigned volunteers'}), 400
         
         db.session.delete(shift)
@@ -274,8 +294,13 @@ def register_for_shift(shift_id):
         if not shift:
             return jsonify({'error': 'Shift not found'}), 404
         
-        if shift.status != 'upcoming':
-            return jsonify({'error': 'Can only register for upcoming shifts'}), 400
+        # Check if shift is funded
+        if not shift.is_funded or (shift.funded_amount or 0) <= 0:
+            return jsonify({'error': 'This shift has not been funded yet. Please contact the organization.'}), 400
+        
+        # Allow registration for upcoming or in_progress shifts
+        if shift.status not in ['upcoming', 'in_progress']:
+            return jsonify({'error': 'Can only register for upcoming or in-progress shifts'}), 400
         
         # Check if already registered
         existing = ShiftRoster.query.filter_by(
@@ -285,6 +310,18 @@ def register_for_shift(shift_id):
         
         if existing:
             return jsonify({'error': 'Already registered for this shift'}), 400
+        
+        # Validate daily shift limit
+        is_valid, error_msg = validate_volunteer_shift_limit(user_id, shift.date)
+        if not is_valid:
+            return jsonify({'error': error_msg}), 400
+        
+        # Check for time conflicts with other shifts the volunteer is registered for
+        is_valid, error_msg, conflicting_shift = validate_shift_time_conflict(
+            user_id, shift.date, shift.start_time, shift.end_time
+        )
+        if not is_valid:
+            return jsonify({'error': error_msg}), 400
         
         # Check if shift is full
         current_count = ShiftRoster.query.filter_by(shift_id=shift_id).count()
@@ -417,52 +454,19 @@ def checkout_shift(shift_id):
         beneficiary_bonus = beneficiaries_served * bonus_per_beneficiary
         total_amount = round(base_payment + beneficiary_bonus, 2)
         
-        # Check if shift is funded and has enough budget
+        # Calculate payout but don't pay yet - requires admin approval
+        roster_entry.payout_amount = total_amount
+        roster_entry.status = 'pending_payment'
+        roster_entry.is_paid = False
+        
+        # Check if shift has sufficient funding
         is_funded = getattr(shift, 'is_funded', False)
         funded_amount = getattr(shift, 'funded_amount', 0) or 0
         
-        payment_status = 'pending'
-        payment_message = ''
-        
-        if is_funded and funded_amount >= total_amount:
-            # Deduct from shift budget and mark as paid
-            shift.funded_amount = funded_amount - total_amount
-            if shift.funded_amount <= 0:
-                shift.is_funded = False
-            
-            roster_entry.is_paid = True
-            roster_entry.paid_at = datetime.utcnow()
-            payment_status = 'completed'
-            payment_message = 'Payment processed from organization funds!'
-        elif is_funded and funded_amount > 0:
-            # Partial payment - pay what's available
-            partial_amount = funded_amount
-            shift.funded_amount = 0
-            shift.is_funded = False
-            total_amount = partial_amount
-            
-            roster_entry.is_paid = True
-            roster_entry.paid_at = datetime.utcnow()
-            payment_status = 'partial'
-            payment_message = f'Partial payment of KES {partial_amount} processed (shift budget exhausted)'
+        if not is_funded or funded_amount < total_amount:
+            payment_message = 'Check-out successful. Payment pending admin approval and shift funding.'
         else:
-            # No funding available
-            payment_status = 'pending'
-            payment_message = 'Shift not funded - payment pending organization funding'
-        
-        roster_entry.payout_amount = total_amount
-        roster_entry.status = 'completed'
-        
-        # Create transaction log if paid
-        if payment_status in ['completed', 'partial']:
-            transaction = TransactionLog(
-                volunteer_id=user_id,
-                shift_roster_id=roster_entry.id,
-                amount=total_amount,
-                status='completed',
-                phone=user.mpesa_phone or user.phone or 'N/A'
-            )
-            db.session.add(transaction)
+            payment_message = 'Check-out successful. Payment pending admin approval.'
         
         db.session.commit()
         
@@ -472,7 +476,7 @@ def checkout_shift(shift_id):
             'hours_worked': round(hours_worked, 2),
             'beneficiaries_served': beneficiaries_served,
             'payout_amount': total_amount,
-            'payment_status': payment_status,
+            'payment_status': 'pending_approval',
             'shift_remaining_budget': getattr(shift, 'funded_amount', 0) or 0
         }), 200
         
@@ -509,7 +513,7 @@ def get_shift_details(shift_id):
                 'lon': project.lon,
                 'geofence_radius': project.geofence_radius
             } if project else None,
-            'volunteers_registered': len(shift.roster_entries) if shift.roster_entries else 0
+            'volunteers_registered': len(shift.roster) if shift.roster else 0
         }), 200
         
     except Exception as e:

@@ -49,38 +49,18 @@ def seed_database():
         db.session.add_all([p_med, p_food])
         db.session.flush()
 
-        print("📅 Creating shifts...")
-        # Shift 1: Completed yesterday
-        s1 = Shift(project_id=p_med.id, title='Clinic Day 1', date=date.today() - timedelta(days=1), 
-                   start_time=time(9,0), end_time=time(12,0), status='completed', max_volunteers=5)
-        # Shift 2: Completed today (Needs payment calculation)
-        s2 = Shift(project_id=p_food.id, title='Afternoon Packing', date=date.today(), 
-                   start_time=time(13,0), end_time=time(15,0), status='completed', max_volunteers=10)
-        db.session.add_all([s1, s2])
-        db.session.flush()
+        print("📅 Shifts will be created by organizations through the UI...")
+        # Note: Removed hardcoded shifts - organizations will create their own shifts
 
-        print("👥 Creating rosters and transactions...")
-        
-        # SCENARIO A: John worked s1, and was ALREADY PAID.
-        # 3 hours * 150 + 10 beneficiaries * 12 = 450 + 120 = 570
-        r1 = ShiftRoster(shift_id=s1.id, volunteer_id=u['john'].id, status='completed', beneficiaries_served=10)
-        db.session.add(r1)
-        db.session.flush()
-        t1 = TransactionLog(volunteer_id=u['john'].id, shift_roster_id=r1.id, amount=570.0, status='completed', phone=u['john'].phone)
-        db.session.add(t1)
-
-        # SCENARIO B: Mary worked s2, shift is completed, but NO TRANSACTION YET.
-        # 2 hours * 150 + 5 beneficiaries * 12 = 300 + 60 = 360 (Projected Cost)
-        r2 = ShiftRoster(shift_id=s2.id, volunteer_id=u['mary'].id, status='completed', beneficiaries_served=5)
-        db.session.add(r2)
-
-        # SCENARIO C: John worked s2 as well, but served 0 beneficiaries.
-        # 2 hours * 150 = 300 (Projected Cost)
-        r3 = ShiftRoster(shift_id=s2.id, volunteer_id=u['john'].id, status='completed', beneficiaries_served=0)
-        db.session.add(r3)
+        print("✅ Database seeded with users, organizations, and projects!")
+        print("🔐 Login credentials:")
+        print("   Admin: admin@volaplace.com / Admin123!")
+        print("   Red Cross: redcross@volaplace.com / Admin123!")
+        print("   Food Bank: foodbank@volaplace.com / Admin123!")
+        print("   Volunteer John: john.doe@volaplace.com / Admin123!")
+        print("   Volunteer Mary: mary.smith@volaplace.com / Admin123!")
 
         db.session.commit()
-        print("🚀 Database seeded with complex financial scenarios!")
 
 if __name__ == "__main__":
     seed_database()
